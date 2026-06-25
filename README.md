@@ -12,7 +12,7 @@
 
 Kekasatori takes a source you want to learn from (a YouTube lecture, an arXiv / PubMed / DOI paper, a web article, or a multi-chapter book) and turns it into a study pack you can actually work through. It is native, local-first, and free.
 
-This repository hosts the **release downloads and the auto-update feed**. The app source is private.
+This repository holds the **full source**, the release downloads, and the auto-update feed. Kekasatori is open source under the MIT license.
 
 ## Install
 
@@ -39,10 +39,26 @@ This is the part we care about most. If your Mac supports Apple Intelligence, th
 
 See the [Privacy Policy](https://harikanth.site/kekasatori/privacy) and [Terms](https://harikanth.site/kekasatori/terms).
 
+## Building from source
+
+Requirements: Xcode 16 or later, macOS 15.5+.
+
+1. Clone the repo and open `MuseDrop.xcodeproj`. (The Xcode target keeps the internal codename **MuseDrop**; the product is Kekasatori.)
+2. The bundled `yt-dlp` and universal `ffmpeg` binaries are **not committed** (see `.gitignore`). Drop them into `MuseDrop/Resources/bin/`. The app also fetches and updates `yt-dlp` at runtime.
+3. Build and run the `MuseDrop` scheme.
+4. Optional: math animations require a local [Manim](https://www.manim.community/) + LaTeX install.
+
+To produce a signed, notarized release, see [`Scripts/package-and-notarize.sh`](Scripts/package-and-notarize.sh) and [`Scripts/sparkle-release.md`](Scripts/sparkle-release.md).
+
+## License
+
+The Kekasatori source is released under the [MIT License](LICENSE).
+
+The **distributed app** also bundles third-party components under their own licenses, including **FFmpeg (GPL)** and **yt-dlp (The Unlicense)**. FFmpeg runs as a separate executable (a subprocess), so it does not affect the MIT licensing of this source; see [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md).
+
 ## Notes
 
 - You are responsible for ensuring your use of any third-party source complies with that service's terms and with applicable copyright law.
-- Kekasatori bundles open-source components, including FFmpeg (GPL) and yt-dlp (Unlicense), under their respective licenses.
 
 ---
 

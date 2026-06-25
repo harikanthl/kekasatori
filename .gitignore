@@ -1,0 +1,34 @@
+# macOS
+.DS_Store
+
+# Xcode / build
+build/
+DerivedData/
+*.xcuserstate
+**/xcuserdata/
+
+# Local agent/editor config
+.claude/
+buildServer.json
+
+# Large bundled binaries — restore via BinaryUpdateService or track with Git LFS
+MuseDrop/Resources/bin/
+
+# Excalidraw embed dependencies & build output (run npm install + build script)
+ExcalidrawHost/node_modules/
+ExcalidrawHost/dist/
+
+# Temp / extraction artifacts
+cat_lottie_extracted/
+MuseDrop/cat_lottie_extracted/
+
+# Signing certificates (install via Keychain; never commit)
+*.cer
+
+# Loose source artwork — the app uses the copies in Assets.xcassets
+/kekalogo.png
+/spark.png
+/forum.png
+/garden.png
+/emergence.png
+/plaster.png

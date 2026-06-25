@@ -1,0 +1,698 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		2822139F2EE16B3100C22375 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 2822139E2EE16B3100C22375 /* Lottie */; };
+		2884F7892FECECC40072585F /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 5A9C1E0000000000000000B2 /* Sparkle */; };
+		AABB0005CCDD0005EEFF0005 /* VecturaKit in Frameworks */ = {isa = PBXBuildFile; productRef = AABB0002CCDD0002EEFF0002 /* VecturaKit */; };
+		AABB0006CCDD0006EEFF0006 /* VecturaNLKit in Frameworks */ = {isa = PBXBuildFile; productRef = AABB0003CCDD0003EEFF0003 /* VecturaNLKit */; };
+		AABB0007CCDD0007EEFF0007 /* VecturaOAIKit in Frameworks */ = {isa = PBXBuildFile; productRef = AABB0004CCDD0004EEFF0004 /* VecturaOAIKit */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		285221DA2ECF287800D4DA72 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 285221C12ECF287700D4DA72 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 285221C82ECF287700D4DA72;
+			remoteInfo = MuseDrop;
+		};
+		285221E42ECF287800D4DA72 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 285221C12ECF287700D4DA72 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 285221C82ECF287700D4DA72;
+			remoteInfo = MuseDrop;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		285221C92ECF287700D4DA72 /* Kekasatori.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kekasatori.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		285221D92ECF287800D4DA72 /* MuseDropTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MuseDropTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		285221E32ECF287800D4DA72 /* MuseDropUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MuseDropUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		5A9C1E0000000000000000C3 /* Exceptions for "MuseDrop" folder in "MuseDrop" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 285221C82ECF287700D4DA72 /* MuseDrop */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		285221CB2ECF287700D4DA72 /* MuseDrop */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				5A9C1E0000000000000000C3 /* Exceptions for "MuseDrop" folder in "MuseDrop" target */,
+			);
+			path = MuseDrop;
+			sourceTree = "<group>";
+		};
+		285221DC2ECF287800D4DA72 /* MuseDropTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = MuseDropTests;
+			sourceTree = "<group>";
+		};
+		285221E62ECF287800D4DA72 /* MuseDropUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = MuseDropUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		285221C62ECF287700D4DA72 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2884F7892FECECC40072585F /* Sparkle in Frameworks */,
+				2822139F2EE16B3100C22375 /* Lottie in Frameworks */,
+				AABB0005CCDD0005EEFF0005 /* VecturaKit in Frameworks */,
+				AABB0006CCDD0006EEFF0006 /* VecturaNLKit in Frameworks */,
+				AABB0007CCDD0007EEFF0007 /* VecturaOAIKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		285221D62ECF287800D4DA72 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		285221E02ECF287800D4DA72 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		285221C02ECF287700D4DA72 = {
+			isa = PBXGroup;
+			children = (
+				285221CB2ECF287700D4DA72 /* MuseDrop */,
+				285221DC2ECF287800D4DA72 /* MuseDropTests */,
+				285221E62ECF287800D4DA72 /* MuseDropUITests */,
+				285221CA2ECF287700D4DA72 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		285221CA2ECF287700D4DA72 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				285221C92ECF287700D4DA72 /* Kekasatori.app */,
+				285221D92ECF287800D4DA72 /* MuseDropTests.xctest */,
+				285221E32ECF287800D4DA72 /* MuseDropUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		285221C82ECF287700D4DA72 /* MuseDrop */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 285221ED2ECF287800D4DA72 /* Build configuration list for PBXNativeTarget "MuseDrop" */;
+			buildPhases = (
+				285221C52ECF287700D4DA72 /* Sources */,
+				285221C62ECF287700D4DA72 /* Frameworks */,
+				285221C72ECF287700D4DA72 /* Resources */,
+				ECA1DRAW0002SCRIPT00001 /* Copy Excalidraw Host */,
+				ECA1MANIM0002SCRIPT00001 /* Copy Manim Scene */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				285221CB2ECF287700D4DA72 /* MuseDrop */,
+			);
+			name = MuseDrop;
+			packageProductDependencies = (
+				2822139E2EE16B3100C22375 /* Lottie */,
+				AABB0002CCDD0002EEFF0002 /* VecturaKit */,
+				AABB0003CCDD0003EEFF0003 /* VecturaNLKit */,
+				AABB0004CCDD0004EEFF0004 /* VecturaOAIKit */,
+				5A9C1E0000000000000000B2 /* Sparkle */,
+			);
+			productName = MuseDrop;
+			productReference = 285221C92ECF287700D4DA72 /* Kekasatori.app */;
+			productType = "com.apple.product-type.application";
+		};
+		285221D82ECF287800D4DA72 /* MuseDropTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 285221F02ECF287800D4DA72 /* Build configuration list for PBXNativeTarget "MuseDropTests" */;
+			buildPhases = (
+				285221D52ECF287800D4DA72 /* Sources */,
+				285221D62ECF287800D4DA72 /* Frameworks */,
+				285221D72ECF287800D4DA72 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				285221DB2ECF287800D4DA72 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				285221DC2ECF287800D4DA72 /* MuseDropTests */,
+			);
+			name = MuseDropTests;
+			packageProductDependencies = (
+			);
+			productName = MuseDropTests;
+			productReference = 285221D92ECF287800D4DA72 /* MuseDropTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		285221E22ECF287800D4DA72 /* MuseDropUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 285221F32ECF287800D4DA72 /* Build configuration list for PBXNativeTarget "MuseDropUITests" */;
+			buildPhases = (
+				285221DF2ECF287800D4DA72 /* Sources */,
+				285221E02ECF287800D4DA72 /* Frameworks */,
+				285221E12ECF287800D4DA72 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				285221E52ECF287800D4DA72 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				285221E62ECF287800D4DA72 /* MuseDropUITests */,
+			);
+			name = MuseDropUITests;
+			packageProductDependencies = (
+			);
+			productName = MuseDropUITests;
+			productReference = 285221E32ECF287800D4DA72 /* MuseDropUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		285221C12ECF287700D4DA72 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					285221C82ECF287700D4DA72 = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					285221D82ECF287800D4DA72 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 285221C82ECF287700D4DA72;
+					};
+					285221E22ECF287800D4DA72 = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = 285221C82ECF287700D4DA72;
+					};
+				};
+			};
+			buildConfigurationList = 285221C42ECF287700D4DA72 /* Build configuration list for PBXProject "MuseDrop" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 285221C02ECF287700D4DA72;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				2822139D2EE16B3100C22375 /* XCRemoteSwiftPackageReference "lottie-ios" */,
+				AABB0001CCDD0001EEFF0001 /* XCRemoteSwiftPackageReference "VecturaKit" */,
+				5A9C1E0000000000000000A1 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 285221CA2ECF287700D4DA72 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				285221C82ECF287700D4DA72 /* MuseDrop */,
+				285221D82ECF287800D4DA72 /* MuseDropTests */,
+				285221E22ECF287800D4DA72 /* MuseDropUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		285221C72ECF287700D4DA72 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		285221D72ECF287800D4DA72 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		285221E12ECF287800D4DA72 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		ECA1DRAW0002SCRIPT00001 /* Copy Excalidraw Host */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/MuseDrop/Resources/ExcalidrawHost/index.html",
+			);
+			name = "Copy Excalidraw Host";
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/ExcalidrawHost/index.html",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\nSRC=\"${SRCROOT}/MuseDrop/Resources/ExcalidrawHost\"\nDEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExcalidrawHost\"\nif [[ ! -f \"${SRC}/index.html\" ]]; then echo \"error: missing ${SRC}/index.html — run ./scripts/build-excalidraw-host.sh\" >&2; exit 1; fi\nrm -rf \"${DEST}\"\nmkdir -p \"${DEST}\"\nditto \"${SRC}\" \"${DEST}\"\n";
+		};
+		ECA1MANIM0002SCRIPT00001 /* Copy Manim Scene */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/MuseDrop/Resources/manim/musedrop_scene.py",
+			);
+			name = "Copy Manim Scene";
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/manim/musedrop_scene.py",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -euo pipefail\nSRC=\"${SRCROOT}/MuseDrop/Resources/manim/musedrop_scene.py\"\nDEST_DIR=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/manim\"\nif [[ ! -f \"${SRC}\" ]]; then echo \"error: missing ${SRC}\" >&2; exit 1; fi\nmkdir -p \"${DEST_DIR}\"\ncp \"${SRC}\" \"${DEST_DIR}/musedrop_scene.py\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		285221C52ECF287700D4DA72 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		285221D52ECF287800D4DA72 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		285221DF2ECF287800D4DA72 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		285221DB2ECF287800D4DA72 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 285221C82ECF287700D4DA72 /* MuseDrop */;
+			targetProxy = 285221DA2ECF287800D4DA72 /* PBXContainerItemProxy */;
+		};
+		285221E52ECF287800D4DA72 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 285221C82ECF287700D4DA72 /* MuseDrop */;
+			targetProxy = 285221E42ECF287800D4DA72 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		285221EB2ECF287800D4DA72 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 2F5YSX6AK6;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		285221EC2ECF287800D4DA72 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 2F5YSX6AK6;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		285221EE2ECF287800D4DA72 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MuseDrop/MuseDrop.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 2F5YSX6AK6;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MuseDrop/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Kekasatori;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Harikanth Lingutla. All rights reserved.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Kekasatori transcribes downloaded lectures and videos on-device to generate study materials.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.Kekasatori;
+				PRODUCT_NAME = Kekasatori;
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		285221EF2ECF287800D4DA72 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MuseDrop/MuseDrop.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 2F5YSX6AK6;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MuseDrop/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Kekasatori;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Harikanth Lingutla. All rights reserved.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Kekasatori transcribes downloaded lectures and videos on-device to generate study materials.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.Kekasatori;
+				PRODUCT_NAME = Kekasatori;
+				REGISTER_APP_GROUPS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		285221F12ECF287800D4DA72 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 2F5YSX6AK6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.KekasatoriTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MuseDrop.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MuseDrop";
+			};
+			name = Debug;
+		};
+		285221F22ECF287800D4DA72 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 2F5YSX6AK6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.KekasatoriTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MuseDrop.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MuseDrop";
+			};
+			name = Release;
+		};
+		285221F42ECF287800D4DA72 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 2F5YSX6AK6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.KekasatoriUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = MuseDrop;
+			};
+			name = Debug;
+		};
+		285221F52ECF287800D4DA72 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 2F5YSX6AK6;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.KekasatoriUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = MuseDrop;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		285221C42ECF287700D4DA72 /* Build configuration list for PBXProject "MuseDrop" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				285221EB2ECF287800D4DA72 /* Debug */,
+				285221EC2ECF287800D4DA72 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		285221ED2ECF287800D4DA72 /* Build configuration list for PBXNativeTarget "MuseDrop" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				285221EE2ECF287800D4DA72 /* Debug */,
+				285221EF2ECF287800D4DA72 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		285221F02ECF287800D4DA72 /* Build configuration list for PBXNativeTarget "MuseDropTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				285221F12ECF287800D4DA72 /* Debug */,
+				285221F22ECF287800D4DA72 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		285221F32ECF287800D4DA72 /* Build configuration list for PBXNativeTarget "MuseDropUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				285221F42ECF287800D4DA72 /* Debug */,
+				285221F52ECF287800D4DA72 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		2822139D2EE16B3100C22375 /* XCRemoteSwiftPackageReference "lottie-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/airbnb/lottie-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.5.0;
+			};
+		};
+		5A9C1E0000000000000000A1 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.6.0;
+			};
+		};
+		AABB0001CCDD0001EEFF0001 /* XCRemoteSwiftPackageReference "VecturaKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/rryam/VecturaKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2822139E2EE16B3100C22375 /* Lottie */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2822139D2EE16B3100C22375 /* XCRemoteSwiftPackageReference "lottie-ios" */;
+			productName = Lottie;
+		};
+		5A9C1E0000000000000000B2 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5A9C1E0000000000000000A1 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+		AABB0002CCDD0002EEFF0002 /* VecturaKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AABB0001CCDD0001EEFF0001 /* XCRemoteSwiftPackageReference "VecturaKit" */;
+			productName = VecturaKit;
+		};
+		AABB0003CCDD0003EEFF0003 /* VecturaNLKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AABB0001CCDD0001EEFF0001 /* XCRemoteSwiftPackageReference "VecturaKit" */;
+			productName = VecturaNLKit;
+		};
+		AABB0004CCDD0004EEFF0004 /* VecturaOAIKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AABB0001CCDD0001EEFF0001 /* XCRemoteSwiftPackageReference "VecturaKit" */;
+			productName = VecturaOAIKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 285221C12ECF287700D4DA72 /* Project object */;
+}

@@ -1,0 +1,42 @@
+{
+  "originHash" : "b0bc0afdb309c45a4fcf60a0dc379f78ece66aec3d05b45ab4407601c0e135a5",
+  "pins" : [
+    {
+      "identity" : "lottie-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/airbnb/lottie-ios",
+      "state" : {
+        "revision" : "a004050748dc197c56256a14dca49a035d74726c",
+        "version" : "4.5.2"
+      }
+    },
+    {
+      "identity" : "sparkle",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/sparkle-project/Sparkle",
+      "state" : {
+        "revision" : "d46d456107feacc80711b21847b82b07bd9fb46e",
+        "version" : "2.9.3"
+      }
+    },
+    {
+      "identity" : "swift-argument-parser",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-argument-parser.git",
+      "state" : {
+        "revision" : "6a52f3251125d74daf04fcbd5e6f08a75d074382",
+        "version" : "1.8.2"
+      }
+    },
+    {
+      "identity" : "vecturakit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/rryam/VecturaKit.git",
+      "state" : {
+        "revision" : "0259266d6975b551b9bb2b1a6202500129aa4a01",
+        "version" : "6.1.0"
+      }
+    }
+  ],
+  "version" : 3
+}

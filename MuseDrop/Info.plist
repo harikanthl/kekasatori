@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Custom Info.plist keys that Xcode's generated-plist (INFOPLIST_KEY_*) settings
+  can't inject (third-party keys). Xcode merges its generated values (version,
+  display name, usage descriptions, etc.) on top of this file at build time.
+-->
+<plist version="1.0">
+<dict>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.education</string>
+	<key>SUFeedURL</key>
+	<string>https://harikanth.site/kekasatori/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>KOhlT1/7DwGWSTauEOGEXuJ0TADYw/DUMvRqsEfiP1Q=</string>
+</dict>
+</plist>
