@@ -78,5 +78,11 @@ enum KeychainService {
         static let llmChat = "llm.chat.apiKey"
         /// Optional separate embeddings key (e.g. OpenAI text-embedding) for cloud RAG.
         static let embeddings = "llm.embeddings.apiKey"
+        /// Google Gemini key for the podcast generator (script + multi-speaker TTS).
+        static let gemini = "gemini.apiKey"
+        /// Secret key for the user's community (Nostr) identity. Placeholder
+        /// until the real Nostr signer lands — kept here so it never touches
+        /// UserDefaults, SwiftData, or logs.
+        static let communitySecretKey = "community.identity.secretKey"
     }
 }

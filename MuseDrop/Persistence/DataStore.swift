@@ -241,9 +241,235 @@ final class DataStore {
                 lastArtifactKindRaw: latest?.kindRaw,
                 isStreamOnly: download.consumptionModeRaw == ConsumptionMode.streamOnly.rawValue,
                 isResearchDocument: mediaItem.isResearchDocument,
-                isAudioMedia: mediaItem.isAudioMedia
+                isAudioMedia: mediaItem.isAudioMedia,
+                masteryStageRaw: session.masteryStageRaw,
+                isPinned: session.isPinned,
+                lastStudiedAt: session.lastStudiedAt
             )
         }
+    }
+
+    // MARK: - Study pack export (.kekapack)
+
+    /// Assemble an export for a download: its study analysis plus pointers to
+    /// any canvas boards and research-paper directories to stage into the
+    /// `.kekapack` archive. Only non-empty directories are referenced.
+    func makeStudyPackExport(for downloadId: UUID, sourceTitle: String) -> StudyPackExport? {
+        guard let download = fetchDownload(id: downloadId),
+              let session = download.studySession,
+              let analysis = MediaAnalysisMapper.toMediaAnalysis(session, downloadId: downloadId)
+        else { return nil }
+
+        var fileSources: [String: URL] = [:]
+
+        var canvasPayloads: [CanvasBoardPayload] = []
+        for (index, board) in download.canvasBoards.sorted(by: { $0.sortOrder < $1.sortOrder }).enumerated() {
+            let dir = PathUtils.canvasBoardDirectory(board.id)
+            guard Self.directoryHasFiles(dir) else { continue }
+            let archivePath = "canvas/\(index)"
+            fileSources[archivePath] = dir
+            canvasPayloads.append(
+                CanvasBoardPayload(
+                    title: board.title,
+                    kindRaw: board.kindRaw,
+                    sortOrder: board.sortOrder,
+                    createdAt: board.createdAt,
+                    updatedAt: board.updatedAt,
+                    directory: archivePath,
+                    files: nil
+                )
+            )
+        }
+
+        var paperPayloads: [PaperPayload] = []
+        if MediaAnalysisMapper.toDownloadItem(download).isResearchDocument {
+            let dir = PathUtils.paperBundleDirectory(itemId: downloadId)
+            if Self.directoryHasFiles(dir) {
+                let archivePath = "papers/0"
+                fileSources[archivePath] = dir
+                paperPayloads.append(PaperPayload(directory: archivePath, files: nil))
+            }
+        }
+
+        let bundle = StudyPackBundle(
+            analysis: analysis,
+            sourceTitle: sourceTitle.isEmpty ? download.title : sourceTitle,
+            sourceURL: download.url.isEmpty ? nil : download.url,
+            sourceFormat: download.format.isEmpty ? nil : download.format,
+            canvasBoards: canvasPayloads.isEmpty ? nil : canvasPayloads,
+            papers: paperPayloads.isEmpty ? nil : paperPayloads
+        )
+        return StudyPackExport(bundle: bundle, fileSources: fileSources)
+    }
+
+    private static func directoryHasFiles(_ url: URL) -> Bool {
+        guard let contents = try? FileManager.default.contentsOfDirectory(atPath: url.path) else { return false }
+        return !contents.isEmpty
+    }
+
+    // MARK: - Study pack import (.kekapack)
+
+    /// Materialize an imported study pack as a fresh download + study session.
+    ///
+    /// The importer doesn't have the source media — only the study artifacts —
+    /// so the new `DownloadRecord` is a stream-only placeholder with no output
+    /// file. Fresh UUIDs are minted for both records so re-importing the same
+    /// pack adds a copy instead of clobbering an existing one. Returns the new
+    /// download id, or nil if the store is degraded/unwritable.
+    @discardableResult
+    func importStudyPack(_ decoded: DecodedStudyPack) -> UUID? {
+        guard !persistenceDegraded else {
+            logService.warning("Skipping study pack import: persistence is degraded (in-memory store)")
+            return nil
+        }
+
+        let bundle = decoded.bundle
+        let analysis = bundle.analysis
+        let downloadId = UUID()
+        let title = bundle.source.title.isEmpty ? analysis.mediaTitle : bundle.source.title
+
+        // A paper bundle carries its own file, so it consumes as a download; a
+        // media pack has no local file on the importer's machine, so it's a
+        // stream-only placeholder (the study artifacts are what's portable).
+        let isPaper = !(bundle.papers?.isEmpty ?? true)
+        let download = DownloadRecord(
+            id: downloadId,
+            url: bundle.source.sourceURL ?? "",
+            title: title,
+            format: bundle.source.format ?? "",
+            statusRaw: DownloadStatus.completed.rawValue,
+            consumptionModeRaw: (isPaper ? ConsumptionMode.download : .streamOnly).rawValue
+        )
+        context.insert(download)
+
+        let session = StudySessionRecord(
+            id: UUID(),
+            mediaTitle: analysis.mediaTitle,
+            engineRaw: analysis.engine.rawValue,
+            createdAt: Date()
+        )
+        session.download = download
+        download.studySession = session
+        context.insert(session)
+
+        MediaAnalysisMapper.apply(analysis, to: session)
+
+        let entry = StudyArtifactRecord(
+            kindRaw: AIStudyArtifactKind.fullPack.rawValue,
+            engineRaw: analysis.engine.rawValue
+        )
+        entry.studySession = session
+        session.artifactHistory.append(entry)
+
+        // Restore canvas boards (new record ids; files rewritten under them).
+        for payload in bundle.canvasBoards ?? [] {
+            let board = CanvasBoardRecord(
+                downloadId: downloadId,
+                title: payload.title,
+                kind: CanvasBoardKind(rawValue: payload.kindRaw) ?? .custom,
+                sortOrder: payload.sortOrder,
+                updatedAt: payload.updatedAt,
+                createdAt: payload.createdAt
+            )
+            board.download = download
+            context.insert(board)
+            restorePayload(
+                directory: payload.directory,
+                legacyBlobs: payload.files,
+                root: decoded.rootDirectory,
+                to: PathUtils.canvasBoardDirectory(board.id),
+                label: "canvas board \"\(payload.title)\""
+            )
+        }
+
+        // Restore the research-paper bundle under the new download id.
+        for payload in bundle.papers ?? [] {
+            restorePayload(
+                directory: payload.directory,
+                legacyBlobs: payload.files,
+                root: decoded.rootDirectory,
+                to: PathUtils.paperBundleDirectory(itemId: downloadId),
+                label: "paper bundle for \"\(title)\""
+            )
+        }
+
+        saveContext()
+        logService.info("Imported study pack \"\(title)\"")
+        return downloadId
+    }
+
+    /// Restore a payload's files into `destination`: copy from the extracted
+    /// archive directory (format 2) or write inline base64 blobs (legacy
+    /// format 1). Failures are logged, not fatal.
+    private func restorePayload(
+        directory: String?,
+        legacyBlobs: [FileBlob]?,
+        root: URL?,
+        to destination: URL,
+        label: String
+    ) {
+        do {
+            if let directory, let root {
+                let source = root.appendingPathComponent(directory)
+                guard FileManager.default.fileExists(atPath: source.path) else { return }
+                try FileManager.default.createDirectory(
+                    at: destination.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+                if FileManager.default.fileExists(atPath: destination.path) {
+                    try FileManager.default.removeItem(at: destination)
+                }
+                try FileManager.default.copyItem(at: source, to: destination)
+            } else if let legacyBlobs {
+                try DirectoryArchive.restore(legacyBlobs, to: destination)
+            }
+        } catch {
+            logService.error("Failed restoring \(label)", error: error)
+        }
+    }
+
+    // MARK: - Study pack organization
+
+    /// Map of source download id → mastery stage, for showing mastery on the
+    /// Library grid (whose items are DownloadItems, not study packs).
+    func masteryStagesByDownload() -> [UUID: MasteryStage] {
+        guard let sessions = try? context.fetch(FetchDescriptor<StudySessionRecord>()) else { return [:] }
+        var map: [UUID: MasteryStage] = [:]
+        for session in sessions {
+            guard let raw = session.masteryStageRaw,
+                  let stage = MasteryStage(rawValue: raw),
+                  let id = session.download?.id else { continue }
+            map[id] = stage
+        }
+        return map
+    }
+
+    private func fetchSession(id: UUID) -> StudySessionRecord? {
+        var descriptor = FetchDescriptor<StudySessionRecord>(
+            predicate: #Predicate { $0.id == id }
+        )
+        descriptor.fetchLimit = 1
+        return try? context.fetch(descriptor).first
+    }
+
+    /// Set (or clear, with nil) a pack's Shu-Ha-Ri mastery stage.
+    func setMasteryStage(_ stage: MasteryStage?, forSession sessionId: UUID) {
+        guard let session = fetchSession(id: sessionId) else { return }
+        session.masteryStageRaw = stage?.rawValue
+        try? context.save()
+    }
+
+    func setPinned(_ pinned: Bool, forSession sessionId: UUID) {
+        guard let session = fetchSession(id: sessionId) else { return }
+        session.isPinned = pinned
+        try? context.save()
+    }
+
+    /// Stamp the pack as studied now (drives the "recently studied" sort).
+    func markStudied(sessionId: UUID) {
+        guard let session = fetchSession(id: sessionId) else { return }
+        session.lastStudiedAt = Date()
+        try? context.save()
     }
     
     func markStudyAvailable(for downloadId: UUID) {

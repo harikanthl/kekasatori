@@ -34,6 +34,10 @@ struct PlayerView: View {
                 .frame(width: studyPanelWidthBinding.wrappedValue)
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        .overlay(alignment: .bottomTrailing) {
+            FocusTimerWidget()
+                .padding(20)
+        }
         .frame(minWidth: 1020, minHeight: 620)
         .toolbar { toolbarContent }
         .onAppear {

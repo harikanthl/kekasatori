@@ -39,7 +39,46 @@ class PlayerViewModel: ObservableObject {
     @Published var hasSavedTranscript = false
     @Published var savedTranscript: MediaTranscript?
     @Published var lastAnalysisEngine: AIEngineKind?
-    
+
+    // MARK: Translation overlay (on-demand, in-memory; never persisted)
+    @Published var translatedAnalysis: MediaAnalysis?
+    @Published var translatedTranscript: MediaTranscript?
+    @Published var activeTranslationDisplayName: String?
+    @Published var isTranslating = false
+    /// Display name of the language currently being translated into (for status UI).
+    @Published var translatingLanguageName: String?
+    @Published var translationError: String?
+    let translationCoordinator = StudyTranslationCoordinator()
+
+    /// In-memory cache of already-translated packs, keyed by target language id
+    /// (e.g. "fr"). Lets re-selecting a language — or returning to one after
+    /// "Show original" — render instantly instead of re-running the whole pack
+    /// through on-device translation. Cleared whenever the underlying content
+    /// changes (new item or regenerated pack).
+    private struct TranslatedPack {
+        let analysis: MediaAnalysis?
+        let transcript: MediaTranscript?
+        let displayName: String
+    }
+    private var translationCache: [String: TranslatedPack] = [:]
+
+    /// What the Study tabs should render — the translated copy when present.
+    var displayedAnalysis: MediaAnalysis? { translatedAnalysis ?? analysis }
+    /// What the Transcript tab should render, preferring any translated text.
+    var displayedTranscript: MediaTranscript? {
+        translatedAnalysis?.transcript ?? translatedTranscript ?? analysis?.transcript ?? savedTranscript
+    }
+    /// Detected language of the current source content (for the EN-input affordance).
+    var transcriptSourceLanguage: Locale.Language? {
+        let text = analysis?.transcript.text ?? savedTranscript?.text
+        guard let text else { return nil }
+        return StudyPackTranslator.detectLanguage(of: text)
+    }
+    var transcriptIsNonEnglish: Bool {
+        guard let language = transcriptSourceLanguage else { return false }
+        return !StudyPackTranslator.isEnglish(language)
+    }
+
     private var timeObserver: Any?
     private var currentItemId: UUID?
     private var playbackItem: DownloadItem?
@@ -72,7 +111,9 @@ class PlayerViewModel: ObservableObject {
         hasSavedTranscript = false
         lastAnalysisEngine = nil
         artifactHistory = []
-        
+        clearTranslation()
+        translationCache.removeAll()
+
         Task {
             await loadStudyState(for: item)
         }
@@ -330,6 +371,9 @@ class PlayerViewModel: ObservableObject {
             guard activeGenerationSession == session else { return }
             
             analysis = result
+            // Pack content changed — any cached translations are now stale.
+            translationCache.removeAll()
+            clearTranslation()
             lastAnalysisEngine = result.engine
             savedTranscript = result.transcript
             hasSavedTranscript = true
@@ -384,15 +428,128 @@ class PlayerViewModel: ObservableObject {
     }
     
     func nextFlashcard() {
-        guard let cards = analysis?.flashcards, !cards.isEmpty else { return }
+        guard let cards = displayedAnalysis?.flashcards, !cards.isEmpty else { return }
         flashcardIndex = (flashcardIndex + 1) % cards.count
         showingFlashcardBack = false
     }
-    
+
     func previousFlashcard() {
-        guard let cards = analysis?.flashcards, !cards.isEmpty else { return }
+        guard let cards = displayedAnalysis?.flashcards, !cards.isEmpty else { return }
         flashcardIndex = (flashcardIndex - 1 + cards.count) % cards.count
         showingFlashcardBack = false
+    }
+
+    // MARK: - Translation
+
+    func clearTranslation() {
+        translatedAnalysis = nil
+        translatedTranscript = nil
+        activeTranslationDisplayName = nil
+        translationError = nil
+    }
+
+    /// Output direction: translate the whole displayed pack (or bare transcript)
+    /// into `option` for reading. Overlay only — nothing is persisted.
+    func translatePack(to option: TranslationLanguageOption) async {
+        guard analysis != nil || savedTranscript != nil else { return }
+        let itemId = currentItemId
+        translationError = nil
+
+        // Instant if we already built this language for the current pack.
+        if let cached = translationCache[option.id] {
+            translatedAnalysis = cached.analysis
+            translatedTranscript = cached.transcript
+            activeTranslationDisplayName = cached.displayName
+            flashcardIndex = 0
+            showingFlashcardBack = false
+            return
+        }
+
+        isTranslating = true
+        translatingLanguageName = option.displayName
+        defer {
+            isTranslating = false
+            translatingLanguageName = nil
+        }
+
+        let sourceText = analysis?.transcript.text ?? savedTranscript?.text ?? ""
+        let source = StudyPackTranslator.detectLanguage(of: sourceText)
+        let target = option.language
+
+        let status = await translationCoordinator.availability(from: source, to: target)
+        guard currentItemId == itemId else { return }
+        if status == .unsupported {
+            translationError = StudyTranslationCoordinator.BridgeError
+                .unsupportedLanguage(option.displayName).localizedDescription
+            return
+        }
+
+        do {
+            if let analysis {
+                let reqs = StudyPackTranslator.requests(for: analysis, includeTranscript: true)
+                let tr = try await translationCoordinator.translate(reqs, from: source, to: target)
+                guard currentItemId == itemId else { return }
+                translatedAnalysis = StudyPackTranslator.apply(tr, to: analysis, includeTranscript: true)
+                translatedTranscript = nil
+            } else if let saved = savedTranscript {
+                let reqs = StudyPackTranslator.requests(for: saved)
+                let tr = try await translationCoordinator.translate(reqs, from: source, to: target)
+                guard currentItemId == itemId else { return }
+                translatedTranscript = StudyPackTranslator.applyTranscript(tr, to: saved)
+                translatedAnalysis = nil
+            }
+            activeTranslationDisplayName = option.displayName
+            translationCache[option.id] = TranslatedPack(
+                analysis: translatedAnalysis,
+                transcript: translatedTranscript,
+                displayName: option.displayName
+            )
+            flashcardIndex = 0
+            showingFlashcardBack = false
+        } catch {
+            guard currentItemId == itemId else { return }
+            translationError = error.localizedDescription
+        }
+    }
+
+    /// Input direction: translate a non-English transcript to English, persist it
+    /// as the working transcript, then regenerate so the pack is built in English.
+    func translateTranscriptToEnglishAndRegenerate(for item: DownloadItem) async {
+        guard let transcript = analysis?.transcript ?? savedTranscript else { return }
+        let itemId = currentItemId
+        translationError = nil
+        isTranslating = true
+
+        let source = StudyPackTranslator.detectLanguage(of: transcript.text)
+        let english = Locale.Language(identifier: "en")
+        do {
+            let reqs = StudyPackTranslator.requests(for: transcript)
+            let tr = try await translationCoordinator.translate(reqs, from: source, to: english)
+            guard currentItemId == itemId else { isTranslating = false; return }
+            let englishTranscript = StudyPackTranslator.applyTranscript(tr, to: transcript)
+
+            // Replace the cached transcript so generation reuses it (no re-download).
+            let partial = MediaAnalysis(
+                downloadId: item.id,
+                mediaTitle: item.displayTitle,
+                transcript: englishTranscript,
+                summary: SummaryResult(),
+                engine: .naturalLanguageFallback
+            )
+            await studyPersistence().saveAnalysis(partial, artifactKind: .transcript)
+            guard currentItemId == itemId else { isTranslating = false; return }
+
+            savedTranscript = englishTranscript
+            hasSavedTranscript = true
+            analysis = nil
+            clearTranslation()
+            isTranslating = false
+            generateStudyMaterials(for: item, forceRegenerate: true)
+        } catch {
+            isTranslating = false
+            guard currentItemId == itemId else { return }
+            translationError = error.localizedDescription
+        }
     }
     
     func toggleFlashcardSide() {
@@ -430,6 +587,10 @@ class PlayerViewModel: ObservableObject {
             player.replaceCurrentItem(with: nil)
         }
         player = nil
+        // Drop the YouTube embed too: clearing this removes YouTubeEmbedView from
+        // the tree, which triggers its dismantleNSView and stops the WKWebView.
+        // Otherwise a YouTube video keeps playing audio after the window closes.
+        youtubeEmbedID = nil
         currentTime = 0
         duration = 0
         isPlaying = false

@@ -93,10 +93,15 @@ enum StudyPackExporter {
 
     /// Sanitized base filename (no extension) derived from the media title.
     static func fileBaseName(for analysis: MediaAnalysis) -> String {
-        let raw = analysis.mediaTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let cleaned = raw.isEmpty ? "Study Pack" : raw
+        sanitizedBaseName(analysis.mediaTitle)
+    }
+
+    /// Strip characters illegal in filenames and clamp the length.
+    static func sanitizedBaseName(_ raw: String) -> String {
+        let cleaned = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = cleaned.isEmpty ? "Study Pack" : cleaned
         let invalid = CharacterSet(charactersIn: "/\\?%*|\"<>:")
-        let safe = cleaned.components(separatedBy: invalid).joined(separator: "-")
+        let safe = name.components(separatedBy: invalid).joined(separator: "-")
         return String(safe.prefix(80))
     }
 
@@ -149,5 +154,137 @@ enum StudyPackExporter {
             LogService.shared.error("Study pack share export failed", error: error)
             return nil
         }
+    }
+
+    // MARK: - Portable pack (.kekapack) encoding
+
+    private static func packEncoder() -> JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }
+
+    private static func packDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }
+
+    private static let manifestName = "manifest.json"
+
+    /// Write a prepared pack to disk as an AppleArchive `.kekapack` container:
+    /// stage `manifest.json` + the source directories, then archive the staging
+    /// tree. The staging dir is always cleaned up.
+    static func writePack(_ export: StudyPackExport, to destination: URL) throws {
+        let fm = FileManager.default
+        let staging = fm.temporaryDirectory
+            .appendingPathComponent("kekapack-out-\(UUID().uuidString)", isDirectory: true)
+        try fm.createDirectory(at: staging, withIntermediateDirectories: true)
+        defer { try? fm.removeItem(at: staging) }
+
+        let manifest = try packEncoder().encode(export.bundle)
+        try manifest.write(to: staging.appendingPathComponent(manifestName))
+
+        for (archivePath, sourceURL) in export.fileSources {
+            let dest = staging.appendingPathComponent(archivePath)
+            try fm.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try fm.copyItem(at: sourceURL, to: dest)
+        }
+
+        if fm.fileExists(atPath: destination.path) {
+            try fm.removeItem(at: destination)
+        }
+        try StudyPackArchive.encode(directory: staging, to: destination)
+    }
+
+    /// Decode a `.kekapack` file. Format 2 is an AppleArchive (extracted to a
+    /// temp dir the caller must clean up); format 1 is a single JSON file.
+    /// Detected by the first byte: `{` ⇒ legacy JSON, otherwise archive.
+    static func readPack(at url: URL) throws -> DecodedStudyPack {
+        let handle = try FileHandle(forReadingFrom: url)
+        let head = try handle.read(upToCount: 1)
+        try? handle.close()
+
+        if head?.first == 0x7B { // '{'  → legacy single-file JSON
+            let bundle = try decodeManifest(Data(contentsOf: url))
+            return DecodedStudyPack(bundle: bundle, rootDirectory: nil)
+        }
+
+        let extractDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("kekapack-in-\(UUID().uuidString)", isDirectory: true)
+        try StudyPackArchive.decode(url, to: extractDir)
+        let manifestURL = extractDir.appendingPathComponent(manifestName)
+        let bundle = try decodeManifest(Data(contentsOf: manifestURL))
+        return DecodedStudyPack(bundle: bundle, rootDirectory: extractDir)
+    }
+
+    private static func decodeManifest(_ data: Data) throws -> StudyPackBundle {
+        let bundle = try packDecoder().decode(StudyPackBundle.self, from: data)
+        guard bundle.formatVersion <= StudyPackBundle.currentFormatVersion else {
+            throw StudyPackBundleError.unsupportedFormat(
+                found: bundle.formatVersion,
+                supported: StudyPackBundle.currentFormatVersion
+            )
+        }
+        return bundle
+    }
+
+    // MARK: - Pack share / save
+
+    /// Prompt the user to save a prepared pack as a portable `.kekapack` file.
+    @MainActor
+    static func savePackToDevice(_ export: StudyPackExport, suggestedName: String) {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.kekaPack]
+        panel.nameFieldStringValue = "\(sanitizedBaseName(suggestedName)).kekapack"
+        panel.canCreateDirectories = true
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            do {
+                try writePack(export, to: url)
+            } catch {
+                presentError("Couldn't export study pack", error)
+            }
+        }
+    }
+
+    /// Prompt the user to pick `.kekapack` files and decode them. Returns the
+    /// successfully decoded packs; surfaces a single alert for any failures.
+    /// Callers must remove each `rootDirectory` once imported.
+    @MainActor
+    static func importPacksFromDisk() -> [DecodedStudyPack] {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.kekaPack]
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.prompt = "Import"
+        panel.message = "Choose one or more Kekasatori study packs (.kekapack)."
+        guard panel.runModal() == .OK else { return [] }
+
+        var packs: [DecodedStudyPack] = []
+        var firstError: Error?
+        for url in panel.urls {
+            do {
+                packs.append(try readPack(at: url))
+            } catch {
+                LogService.shared.error("Study pack import failed for \(url.lastPathComponent)", error: error)
+                if firstError == nil { firstError = error }
+            }
+        }
+        if let firstError, packs.isEmpty {
+            presentError("Couldn't import study pack", firstError)
+        }
+        return packs
+    }
+
+    @MainActor
+    private static func presentError(_ title: String, _ error: Error) {
+        LogService.shared.error(title, error: error)
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = error.localizedDescription
+        alert.alertStyle = .warning
+        alert.runModal()
     }
 }

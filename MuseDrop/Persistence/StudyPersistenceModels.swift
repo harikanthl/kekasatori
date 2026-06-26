@@ -99,7 +99,15 @@ final class StudySessionRecord {
     var mindMapCentralTopic: String
     /// Fingerprint of the source file/URL this session belongs to.
     var sourceMediaKey: String = ""
-    
+
+    // MARK: Organization (additive — lightweight migration safe)
+    /// Shu-Ha-Ri mastery stage; nil means unset. Stores `MasteryStage.rawValue`.
+    var masteryStageRaw: String?
+    /// User-pinned/favorite pack (floats to the top of lists).
+    var isPinned: Bool = false
+    /// Last time the user opened this pack to study (drives "recently studied").
+    var lastStudiedAt: Date?
+
     @Relationship(deleteRule: .cascade, inverse: \TranscriptRecord.studySession)
     var transcript: TranscriptRecord?
     

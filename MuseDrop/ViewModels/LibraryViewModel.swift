@@ -14,7 +14,9 @@ class LibraryViewModel: ObservableObject {
     @Published var selectedFilter: FilterType = .all
     @Published var selectedItemID: UUID?
     @Published var isDeleting = false
-    
+    /// Source download id → mastery stage, for the mastery badge on cards.
+    @Published var masteryByDownload: [UUID: MasteryStage] = [:]
+
     private let libraryManager = LibraryManager.shared
     private var cancellables = Set<AnyCancellable>()
     
@@ -41,6 +43,7 @@ class LibraryViewModel: ObservableObject {
         libraryManager.$downloads
             .sink { [weak self] downloads in
                 self?.mediaItems = downloads.filter(Self.isLibraryItem)
+                self?.refreshMastery()
                 self?.applyFilters()
             }
             .store(in: &cancellables)
@@ -67,7 +70,14 @@ class LibraryViewModel: ObservableObject {
     
     private func loadMedia() {
         mediaItems = libraryManager.downloads.filter(Self.isLibraryItem)
+        refreshMastery()
         applyFilters()
+    }
+
+    /// Refresh the download → mastery map (call when the view appears, since
+    /// mastery can be changed from the Study Packs tab while Library is open).
+    func refreshMastery() {
+        masteryByDownload = DataStore.shared.masteryStagesByDownload()
     }
     
     func select(_ item: DownloadItem) {

@@ -9,17 +9,26 @@ import Combine
 import AppKit
 
 enum HomeIngestionMode: String, CaseIterable, Identifiable {
-    case download
+    // Order = the home segmented control order: Stream · Research · Download.
     case streamOnly
     case research
-    
+    case download
+
     var id: String { rawValue }
-    
+
     var title: String {
         switch self {
-        case .download: return "Download"
-        case .streamOnly: return "Stream & Study"
+        case .streamOnly: return "Stream"
         case .research: return "Research"
+        case .download: return "Download"
+        }
+    }
+
+    var glyph: String {
+        switch self {
+        case .streamOnly: return "play.circle"
+        case .research: return "doc.text.magnifyingglass"
+        case .download: return "arrow.down.circle"
         }
     }
 }
@@ -36,7 +45,7 @@ class HomeViewModel: ObservableObject {
     @Published var shouldNavigateToDownloads: Bool = false
     @Published var shouldNavigateToLibrary: Bool = false
     @Published var isVideoDownload: Bool = false
-    @Published var ingestionMode: HomeIngestionMode = .download
+    @Published var ingestionMode: HomeIngestionMode = .streamOnly
     @Published var isStreamActionInProgress = false
     @Published var streamActionMessage = ""
     @Published var waitElapsedSeconds = 0

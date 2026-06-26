@@ -25,8 +25,18 @@ struct StudyPackSummary: Identifiable, Hashable, Sendable {
     let isStreamOnly: Bool
     let isResearchDocument: Bool
     let isAudioMedia: Bool
+    // Mutable so the view model can reflect a change in-memory without a full
+    // SwiftData refetch (the persistence write still happens via DataStore).
+    var masteryStageRaw: String?
+    var isPinned: Bool
+    var lastStudiedAt: Date?
 
     var id: UUID { downloadId }
+
+    /// Shu-Ha-Ri mastery stage, if the user has set one.
+    var masteryStage: MasteryStage? {
+        masteryStageRaw.flatMap(MasteryStage.init(rawValue:))
+    }
     
     var displayTitle: String {
         let trimmed = mediaTitle.trimmingCharacters(in: .whitespacesAndNewlines)

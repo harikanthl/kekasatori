@@ -76,14 +76,16 @@ final class ProcessRunner: @unchecked Sendable {
         executable: URL,
         arguments: [String],
         workingDirectory: URL? = nil,
-        timeout: TimeInterval? = nil
+        timeout: TimeInterval? = nil,
+        environment: [String: String]? = nil
     ) async throws -> (stdout: String, stderr: String, exitCode: Int32) {
         try await withThrowingTaskGroup(of: (String, String, Int32).self) { group in
             group.addTask {
                 try await self.runProcess(
                     executable: executable,
                     arguments: arguments,
-                    workingDirectory: workingDirectory
+                    workingDirectory: workingDirectory,
+                    environment: environment
                 )
             }
             
@@ -106,19 +108,20 @@ final class ProcessRunner: @unchecked Sendable {
     private func runProcess(
         executable: URL,
         arguments: [String],
-        workingDirectory: URL? = nil
+        workingDirectory: URL? = nil,
+        environment: [String: String]? = nil
     ) async throws -> (stdout: String, stderr: String, exitCode: Int32) {
         resetCancel()
         return try await withCheckedThrowingContinuation { continuation in
             let process = Process()
             process.executableURL = executable
             process.arguments = arguments
-            
+
             if let workingDirectory = workingDirectory {
                 process.currentDirectoryURL = workingDirectory
             }
-            
-            process.environment = Self.processEnvironment()
+
+            process.environment = Self.processEnvironment(extra: environment)
             
             let stdoutPipe = Pipe()
             let stderrPipe = Pipe()
@@ -194,7 +197,8 @@ final class ProcessRunner: @unchecked Sendable {
     func runWithProgress(
         executable: URL,
         arguments: [String],
-        workingDirectory: URL? = nil
+        workingDirectory: URL? = nil,
+        environment: [String: String]? = nil
     ) -> AsyncThrowingStream<String, Error> {
         resetCancel()
         return AsyncThrowingStream { continuation in
@@ -206,7 +210,7 @@ final class ProcessRunner: @unchecked Sendable {
                 process.currentDirectoryURL = workingDirectory
             }
 
-            process.environment = Self.processEnvironment()
+            process.environment = Self.processEnvironment(extra: environment)
 
             let stdoutPipe = Pipe()
             let stderrPipe = Pipe()
@@ -307,7 +311,7 @@ final class ProcessRunner: @unchecked Sendable {
         task?.terminate()
     }
     
-    private static func processEnvironment() -> [String: String] {
+    private static func processEnvironment(extra: [String: String]? = nil) -> [String: String] {
         let binDir = PathUtils.binDirectory
         var environment = ProcessInfo.processInfo.environment
         let commonPaths = PathUtils.latexBinDirectories() + [
@@ -320,11 +324,16 @@ final class ProcessRunner: @unchecked Sendable {
             "/usr/sbin",
             "/sbin"
         ]
-        
+
         if let currentPath = environment["PATH"] {
             environment["PATH"] = commonPaths.joined(separator: ":") + ":" + currentPath
         } else {
             environment["PATH"] = commonPaths.joined(separator: ":")
+        }
+
+        // Caller-supplied overrides (e.g. IPFS_PATH for the kubo daemon).
+        if let extra {
+            for (key, value) in extra { environment[key] = value }
         }
         return environment
     }

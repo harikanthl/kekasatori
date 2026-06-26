@@ -13,5 +13,41 @@
 	<string>https://harikanth.site/kekasatori/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>KOhlT1/7DwGWSTauEOGEXuJ0TADYw/DUMvRqsEfiP1Q=</string>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.kekasatori.studypack</string>
+			<key>UTTypeDescription</key>
+			<string>Kekasatori Study Pack</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>kekapack</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Kekasatori Study Pack</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.kekasatori.studypack</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

@@ -52,6 +52,7 @@ struct LibraryView: View {
                     LibraryMediaGrid(
                         items: viewModel.filteredItems,
                         selectedItemID: viewModel.selectedItemID,
+                        mastery: viewModel.masteryByDownload,
                         onSelect: { viewModel.select($0) },
                         onOpen: { openPlayerWindow(for: $0) },
                         onDelete: { confirmDelete($0) }
@@ -98,6 +99,7 @@ struct LibraryView: View {
                 confirmDelete(selected)
             }
         }
+        .onAppear { viewModel.refreshMastery() }
     }
     
     private var selectionToolbar: some View {
@@ -145,6 +147,7 @@ struct LibraryView: View {
 private struct LibraryMediaGrid: View {
     let items: [DownloadItem]
     let selectedItemID: UUID?
+    let mastery: [UUID: MasteryStage]
     let onSelect: (DownloadItem) -> Void
     let onOpen: (DownloadItem) -> Void
     let onDelete: (DownloadItem) -> Void
@@ -159,6 +162,7 @@ private struct LibraryMediaGrid: View {
                 ModernMediaCard(
                     item: item,
                     isSelected: selectedItemID == item.id,
+                    masteryStage: mastery[item.id],
                     onSelect: { onSelect(item) },
                     onOpen: { onOpen(item) },
                     onDelete: { onDelete(item) }
@@ -190,6 +194,7 @@ private enum ThumbnailLoader {
 struct ModernMediaCard: View {
     let item: DownloadItem
     var isSelected: Bool = false
+    var masteryStage: MasteryStage? = nil
     let onSelect: () -> Void
     let onOpen: () -> Void
     let onDelete: () -> Void
@@ -203,12 +208,14 @@ struct ModernMediaCard: View {
     init(
         item: DownloadItem,
         isSelected: Bool = false,
+        masteryStage: MasteryStage? = nil,
         onSelect: @escaping () -> Void,
         onOpen: @escaping () -> Void,
         onDelete: @escaping () -> Void
     ) {
         self.item = item
         self.isSelected = isSelected
+        self.masteryStage = masteryStage
         self.onSelect = onSelect
         self.onOpen = onOpen
         self.onDelete = onDelete
@@ -294,6 +301,17 @@ struct ModernMediaCard: View {
                         .padding(Theme.Spacing.sm)
                 }
             }
+            .overlay(alignment: .topTrailing) {
+                if let stage = masteryStage {
+                    Label(stage.label, systemImage: stage.glyph)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(stage.tint)
+                        .padding(.horizontal, Theme.Spacing.sm)
+                        .padding(.vertical, Theme.Spacing.xs)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .padding(Theme.Spacing.sm)
+                }
+            }
 
             Text(item.displayFormat)
                 .font(.caption2.weight(.semibold))
@@ -348,7 +366,7 @@ extension LibraryView {
     /// Opens the selected media item in its own macOS window, using the system's standard
     /// close / minimize / zoom / fullscreen controls in the title bar, per macOS HIG.
     func openPlayerWindow(for item: DownloadItem) {
-        PlayerWindowPresenter.open(for: item, controller: &playerWindowController)
+        PlayerWindowPresenter.open(for: item, controller: $playerWindowController)
     }
 }
 

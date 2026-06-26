@@ -66,7 +66,54 @@ struct PathUtils {
     static var papersDirectory: URL {
         libraryDirectory.appendingPathComponent("Papers")
     }
-    
+
+    /// Community sharing scratch space (local discovery-wall stub).
+    static var communityDirectory: URL {
+        applicationSupportDirectory.appendingPathComponent("Community")
+    }
+
+    /// Local index of community posts (stub backend; replaced by Nostr later).
+    static var communityIndexFile: URL {
+        communityDirectory.appendingPathComponent("index.json")
+    }
+
+    /// Published `.kekapack` files seeded by this user (also added to IPFS).
+    static var communityPacksDirectory: URL {
+        communityDirectory.appendingPathComponent("packs")
+    }
+
+    /// This user's own published Nostr events (JSON), re-broadcast each session
+    /// so posts survive eviction from free relays.
+    static var communityMyPostsDirectory: URL {
+        communityDirectory.appendingPathComponent("my-posts")
+    }
+
+    /// The bundled/downloaded kubo (IPFS) binary used for Phase-3 content P2P.
+    static var ipfsBinaryPath: URL {
+        binDirectory.appendingPathComponent("ipfs")
+    }
+
+    /// kubo repo, kept isolated from any system-wide `~/.ipfs` the user runs.
+    static var ipfsRepoDirectory: URL {
+        communityDirectory.appendingPathComponent("ipfs-repo")
+    }
+
+    /// Locate the kubo binary: app-support copy first, then the app bundle.
+    static func getIPFSBinaryPath() -> URL? {
+        if FileManager.default.fileExists(atPath: ipfsBinaryPath.path) {
+            return ipfsBinaryPath
+        }
+        if let bundled = Bundle.main.url(forResource: "ipfs", withExtension: nil),
+           FileManager.default.fileExists(atPath: bundled.path) {
+            return bundled
+        }
+        if let bundled = Bundle.main.url(forResource: "ipfs", withExtension: nil, subdirectory: "bin"),
+           FileManager.default.fileExists(atPath: bundled.path) {
+            return bundled
+        }
+        return nil
+    }
+
     static func paperBundleDirectory(itemId: UUID) -> URL {
         papersDirectory.appendingPathComponent(itemId.uuidString, isDirectory: true)
     }
@@ -463,7 +510,9 @@ struct PathUtils {
             binDirectory,
             canvasDirectory,
             notebookDirectory,
-            papersDirectory
+            papersDirectory,
+            communityDirectory,
+            communityPacksDirectory
         ]
         
         for directory in directories {

@@ -64,7 +64,12 @@ class SettingsViewModel: ObservableObject {
             defaultVideoResolution = videoResolution
         }
         
-        enableAISummary = userDefaults.bool(forKey: "enableAISummary")
+        // Default ON when never set. Using `.bool(forKey:)` directly returns
+        // false for an absent key, which then gets persisted by saveSettings()
+        // and silently disables every AI study tool (and the Generate button).
+        if userDefaults.object(forKey: "enableAISummary") != nil {
+            enableAISummary = userDefaults.bool(forKey: "enableAISummary")
+        }
         
         if let modeRaw = userDefaults.string(forKey: Self.defaultHomeModeKey),
            let mode = ConsumptionMode(rawValue: modeRaw) {

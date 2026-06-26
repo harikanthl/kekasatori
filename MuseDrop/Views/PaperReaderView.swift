@@ -63,6 +63,8 @@ final class PaperReaderController: NSObject, ObservableObject {
     @Published var hasOutline = false
     @Published var theme: PaperReadingTheme = .system
     @Published var isSpeaking = false
+    @Published var speechRate: Float = UserDefaults.standard.object(forKey: "paperSpeechRate") as? Float ?? 0.5
+    @Published var selectedVoiceID: String? = UserDefaults.standard.string(forKey: "paperVoiceID")
     @Published var zoomPercent = 100
     @Published var matchCount = 0
     @Published var currentMatch = 0                // 1-based for display
@@ -232,17 +234,102 @@ final class PaperReaderController: NSObject, ObservableObject {
 
     // MARK: Read aloud
 
+    /// A short, curated voice list for the picker. macOS ships dozens of voices,
+    /// so we only surface the good ones (Enhanced/Premium) when any are installed,
+    /// and otherwise cap the Default list so the menu stays small.
+    var availableVoices: [AVSpeechSynthesisVoice] {
+        let prefix = String(AVSpeechSynthesisVoice.currentLanguageCode().prefix(2))
+        let all = AVSpeechSynthesisVoice.speechVoices()
+        let matching = all.filter { $0.language.hasPrefix(prefix) }
+        let sorted = (matching.isEmpty ? all : matching)
+            .sorted { $0.quality.rawValue > $1.quality.rawValue }
+        let good = sorted.filter { $0.quality.rawValue > AVSpeechSynthesisVoiceQuality.default.rawValue }
+        return good.isEmpty ? Array(sorted.prefix(10)) : good
+    }
+
+    /// True when the best installed voice is still the robotic Default tier, so
+    /// the UI can nudge the user to download an Enhanced/Premium voice.
+    var hasOnlyDefaultVoices: Bool {
+        (availableVoices.map { $0.quality.rawValue }.max() ?? 1) <= AVSpeechSynthesisVoiceQuality.default.rawValue
+    }
+
+    private var resolvedVoice: AVSpeechSynthesisVoice? {
+        if let id = selectedVoiceID, let voice = AVSpeechSynthesisVoice(identifier: id) { return voice }
+        return availableVoices.first   // highest quality available
+    }
+
+    func setVoice(_ identifier: String?) {
+        selectedVoiceID = identifier
+        UserDefaults.standard.set(identifier, forKey: "paperVoiceID")
+        if isSpeaking { restartReading() }
+    }
+
+    func setSpeechRate(_ rate: Float) {
+        speechRate = rate
+        UserDefaults.standard.set(rate, forKey: "paperSpeechRate")
+        if isSpeaking { restartReading() }
+    }
+
     func toggleReadAloud() {
-        if synthesizer.isSpeaking {
+        if synthesizer.isSpeaking || isSpeaking {
+            isSpeaking = false               // set before stop so didCancel is a no-op
             synthesizer.stopSpeaking(at: .immediate)
-            isSpeaking = false
             return
         }
-        guard let text = pdfView.currentPage?.string, !text.isEmpty else { return }
-        let utterance = AVSpeechUtterance(string: text)
-        utterance.rate = AVSpeechUtteranceDefaultSpeechRate
-        synthesizer.speak(utterance)
         isSpeaking = true
+        speakCurrentPage()
+    }
+
+    private func restartReading() {
+        synthesizer.stopSpeaking(at: .immediate)
+        isSpeaking = true
+        DispatchQueue.main.async { [weak self] in self?.speakCurrentPage() }
+    }
+
+    private func speakCurrentPage() {
+        guard isSpeaking, let raw = pdfView.currentPage?.string else { isSpeaking = false; return }
+        let text = Self.cleanForSpeech(raw)
+        guard !text.isEmpty else { advanceOrStop(); return }
+        let utterance = AVSpeechUtterance(string: text)
+        utterance.voice = resolvedVoice
+        utterance.rate = speechRate
+        utterance.postUtteranceDelay = 0.4    // a breath between pages
+        synthesizer.speak(utterance)
+    }
+
+    /// After a page finishes, roll on to the next for a hands-free listen-through.
+    func advanceOrStop() {
+        guard isSpeaking else { return }
+        if canGoForward {
+            goToNext()
+            DispatchQueue.main.async { [weak self] in self?.speakCurrentPage() }
+        } else {
+            isSpeaking = false
+        }
+    }
+
+    /// Strip the artifacts that make raw PDF text read terribly aloud:
+    /// hyphenated line breaks, inline numeric citations, and stray whitespace.
+    static func cleanForSpeech(_ raw: String) -> String {
+        var t = raw
+        t = t.replacingOccurrences(of: "-\n", with: "")
+        t = t.replacingOccurrences(of: "\n", with: " ")
+        t = t.replacingOccurrences(of: #"\[\d+(?:[\s,;–-]+\d+)*\]"#, with: "", options: .regularExpression)
+        t = t.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression)
+        return t.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Cleaned text for an inclusive 1-based page range (for the podcast tool).
+    func text(fromPage start: Int, toPage end: Int) -> String {
+        guard let document = pdfView.document else { return "" }
+        let lo = max(0, min(start, end) - 1)
+        let hi = min(document.pageCount - 1, max(start, end) - 1)
+        guard lo <= hi else { return "" }
+        var parts: [String] = []
+        for index in lo...hi {
+            if let text = document.page(at: index)?.string { parts.append(text) }
+        }
+        return Self.cleanForSpeech(parts.joined(separator: "\n"))
     }
 
     // MARK: Outline
@@ -270,11 +357,10 @@ final class PaperReaderController: NSObject, ObservableObject {
 
 extension PaperReaderController: AVSpeechSynthesizerDelegate {
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.isSpeaking = false }
+        Task { @MainActor in self.advanceOrStop() }
     }
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.isSpeaking = false }
-    }
+    // didCancel is intentionally not handled: toggleReadAloud() owns isSpeaking,
+    // and restartReading() relies on a cancel here being a no-op.
 }
 
 // MARK: - Main view
@@ -289,6 +375,7 @@ struct PaperReaderView: View {
     @State private var showSearch = false
     @State private var searchText = ""
     @State private var showInfo = false
+    @State private var showPodcast = false
     @State private var pageField = "1"
 
     private var bundleURL: URL? { item.paperBundleURL }
@@ -447,10 +534,40 @@ struct PaperReaderView: View {
                 .help("Reading theme & layout")
 
                 toolbarToggle(controller.isSpeaking ? "stop.circle" : "speaker.wave.2",
-                              help: controller.isSpeaking ? "Stop reading" : "Read page aloud",
+                              help: controller.isSpeaking ? "Stop reading" : "Read aloud",
                               isOn: controller.isSpeaking) {
                     controller.toggleReadAloud()
                 }
+
+                Menu {
+                    Picker("Voice", selection: voiceBinding) {
+                        Text("Best available").tag(String?.none)
+                        ForEach(controller.availableVoices, id: \.identifier) { voice in
+                            Text("\(voice.name) · \(qualityLabel(voice.quality))").tag(Optional(voice.identifier))
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    Picker("Speed", selection: rateBinding) {
+                        Text("Slow").tag(Float(0.42))
+                        Text("Normal").tag(Float(0.5))
+                        Text("Fast").tag(Float(0.56))
+                        Text("Faster").tag(Float(0.62))
+                    }
+                    .pickerStyle(.menu)
+
+                    if controller.hasOnlyDefaultVoices {
+                        Divider()
+                        Link("Get better voices…",
+                             destination: URL(string: "x-apple.systempreferences:com.apple.preference.universalaccess?SpokenContent")!)
+                    }
+                } label: {
+                    Image(systemName: "slider.horizontal.3")
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help("Voice & speed")
             }
 
             toolbarToggle("info.circle", help: "Paper details", isOn: showInfo) {
@@ -499,6 +616,10 @@ struct PaperReaderView: View {
 
     private var moreMenu: some View {
         Menu {
+            Button("Make Podcast…", systemImage: "waveform.circle") {
+                showPodcast = true
+            }
+            Divider()
             if let url = pdfURL {
                 Button("Open in Default App", systemImage: "arrow.up.forward.app") {
                     NSWorkspace.shared.open(url)
@@ -524,6 +645,14 @@ struct PaperReaderView: View {
         .menuStyle(.borderlessButton)
         .fixedSize()
         .help("More")
+        .sheet(isPresented: $showPodcast) {
+            PodcastSheet(
+                paperTitle: item.displayTitle,
+                pageCount: controller.pageCount,
+                initialPage: controller.currentPageIndex + 1,
+                textForPages: { controller.text(fromPage: $0, toPage: $1) }
+            )
+        }
     }
 
     // MARK: Sidebar
@@ -652,6 +781,22 @@ struct PaperReaderView: View {
 
     private var displayModeBinding: Binding<PDFDisplayMode> {
         Binding(get: { controller.displayMode }, set: { controller.setDisplayMode($0) })
+    }
+
+    private var voiceBinding: Binding<String?> {
+        Binding(get: { controller.selectedVoiceID }, set: { controller.setVoice($0) })
+    }
+
+    private var rateBinding: Binding<Float> {
+        Binding(get: { controller.speechRate }, set: { controller.setSpeechRate($0) })
+    }
+
+    private func qualityLabel(_ quality: AVSpeechSynthesisVoiceQuality) -> String {
+        switch quality {
+        case .premium:  return "Premium"
+        case .enhanced: return "Enhanced"
+        default:        return "Default"
+        }
     }
 
     private func toggleSidebar(_ kind: ReaderSidebar) {

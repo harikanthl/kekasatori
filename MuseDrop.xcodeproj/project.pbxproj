@@ -12,6 +12,7 @@
 		AABB0005CCDD0005EEFF0005 /* VecturaKit in Frameworks */ = {isa = PBXBuildFile; productRef = AABB0002CCDD0002EEFF0002 /* VecturaKit */; };
 		AABB0006CCDD0006EEFF0006 /* VecturaNLKit in Frameworks */ = {isa = PBXBuildFile; productRef = AABB0003CCDD0003EEFF0003 /* VecturaNLKit */; };
 		AABB0007CCDD0007EEFF0007 /* VecturaOAIKit in Frameworks */ = {isa = PBXBuildFile; productRef = AABB0004CCDD0004EEFF0004 /* VecturaOAIKit */; };
+		NOSTR0003BUILDFILE000001 /* NostrSDK in Frameworks */ = {isa = PBXBuildFile; productRef = NOSTR0002PRODUCTDEP00001 /* NostrSDK */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -78,6 +79,7 @@
 				AABB0005CCDD0005EEFF0005 /* VecturaKit in Frameworks */,
 				AABB0006CCDD0006EEFF0006 /* VecturaNLKit in Frameworks */,
 				AABB0007CCDD0007EEFF0007 /* VecturaOAIKit in Frameworks */,
+				NOSTR0003BUILDFILE000001 /* NostrSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -145,6 +147,7 @@
 				AABB0003CCDD0003EEFF0003 /* VecturaNLKit */,
 				AABB0004CCDD0004EEFF0004 /* VecturaOAIKit */,
 				5A9C1E0000000000000000B2 /* Sparkle */,
+				NOSTR0002PRODUCTDEP00001 /* NostrSDK */,
 			);
 			productName = MuseDrop;
 			productReference = 285221C92ECF287700D4DA72 /* Kekasatori.app */;
@@ -232,6 +235,7 @@
 				2822139D2EE16B3100C22375 /* XCRemoteSwiftPackageReference "lottie-ios" */,
 				AABB0001CCDD0001EEFF0001 /* XCRemoteSwiftPackageReference "VecturaKit" */,
 				5A9C1E0000000000000000A1 /* XCRemoteSwiftPackageReference "Sparkle" */,
+				28910A1E2FEE7678003C2C51 /* XCRemoteSwiftPackageReference "nostr-sdk-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 285221CA2ECF287700D4DA72 /* Products */;
@@ -473,7 +477,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 2F5YSX6AK6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -488,7 +492,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.Kekasatori;
 				PRODUCT_NAME = Kekasatori;
 				REGISTER_APP_GROUPS = YES;
@@ -506,7 +510,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 2F5YSX6AK6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -521,7 +525,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.Kekasatori;
 				PRODUCT_NAME = Kekasatori;
 				REGISTER_APP_GROUPS = YES;
@@ -535,11 +539,11 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 2F5YSX6AK6;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.KekasatoriTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -553,11 +557,11 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 2F5YSX6AK6;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.KekasatoriTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -570,10 +574,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 2F5YSX6AK6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.KekasatoriUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -586,10 +590,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 2F5YSX6AK6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.KekasatoriUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -648,6 +652,14 @@
 				minimumVersion = 4.5.0;
 			};
 		};
+		28910A1E2FEE7678003C2C51 /* XCRemoteSwiftPackageReference "nostr-sdk-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/nostr-sdk/nostr-sdk-ios.git";
+			requirement = {
+				kind = revision;
+				revision = e5855cbd3bdabf44075fd2abdf76f63bac4cbd5f;
+			};
+		};
 		5A9C1E0000000000000000A1 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sparkle-project/Sparkle";
@@ -691,6 +703,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = AABB0001CCDD0001EEFF0001 /* XCRemoteSwiftPackageReference "VecturaKit" */;
 			productName = VecturaOAIKit;
+		};
+		NOSTR0002PRODUCTDEP00001 /* NostrSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 28910A1E2FEE7678003C2C51 /* XCRemoteSwiftPackageReference "nostr-sdk-ios" */;
+			productName = NostrSDK;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

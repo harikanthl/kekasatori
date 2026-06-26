@@ -32,9 +32,12 @@ struct StudyToolsPanel: View {
             
             StudyTabBar(tabs: availableStudyTabs, selection: $viewModel.selectedStudyTab)
             Divider()
-            
+
+            translationBar
+
             tabBody
         }
+        .studyTranslationHost(viewModel.translationCoordinator)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             Task { @MainActor in
@@ -174,6 +177,78 @@ struct StudyToolsPanel: View {
         }
     }
     
+    /// Drives the retro status bar inside the translation area.
+    private var translationStatus: RetroStatus? {
+        if viewModel.isTranslating {
+            let into = viewModel.translatingLanguageName.map { " into \($0)" } ?? ""
+            return RetroStatus(
+                kind: .working,
+                message: "summary · notes · cards · terms\(into)"
+            )
+        }
+        if let error = viewModel.translationError {
+            return RetroStatus(kind: .warning, message: error)
+        }
+        return nil
+    }
+
+    @ViewBuilder
+    private var translationBar: some View {
+        let hasContent = viewModel.analysis != nil || viewModel.hasSavedTranscript
+        let isTranslatableTab = ![.tutor, .canvas, .notebook].contains(viewModel.selectedStudyTab)
+
+        if hasContent, isTranslatableTab, !viewModel.isGeneratingAI {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Menu {
+                        ForEach(TranslationLanguageOption.common) { option in
+                            Button(option.displayName) {
+                                Task { await viewModel.translatePack(to: option) }
+                            }
+                        }
+                    } label: {
+                        Label("Translate", systemImage: "character.bubble")
+                            .font(.caption)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .disabled(viewModel.isTranslating)
+
+                    if viewModel.transcriptIsNonEnglish {
+                        Button {
+                            Task { await viewModel.translateTranscriptToEnglishAndRegenerate(for: item) }
+                        } label: {
+                            Label("To English & regenerate", systemImage: "globe")
+                                .font(.caption)
+                        }
+                        .buttonStyle(.borderless)
+                        .controlSize(.small)
+                        .disabled(viewModel.isTranslating)
+                        .help("Translate the transcript to English, then rebuild the study pack in English")
+                    }
+
+                    Spacer(minLength: 4)
+
+                    if !viewModel.isTranslating, let language = viewModel.activeTranslationDisplayName {
+                        HStack(spacing: 6) {
+                            StudyStatusChip(title: language, icon: "character.bubble.fill", tint: StudyPanelDesign.accent)
+                            Button("Show original") { viewModel.clearTranslation() }
+                                .buttonStyle(.borderless)
+                                .controlSize(.small)
+                        }
+                    }
+                }
+
+                RetroStatusBar(status: translationStatus)
+            }
+            .padding(.horizontal, StudyPanelDesign.contentPadding)
+            .padding(.vertical, 6)
+            .background(Color(nsColor: .windowBackgroundColor).opacity(0.5))
+
+            Divider()
+        }
+    }
+
     @ViewBuilder
     private var tabBody: some View {
         if viewModel.selectedStudyTab == .tutor {
@@ -192,9 +267,9 @@ struct StudyToolsPanel: View {
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    if let analysis = viewModel.analysis {
+                    if let analysis = viewModel.displayedAnalysis {
                         studyTabContent(analysis: analysis)
-                    } else if let transcript = viewModel.savedTranscript {
+                    } else if let transcript = viewModel.displayedTranscript {
                         studyTabContent(analysis: nil, transcript: transcript)
                     } else if !viewModel.isGeneratingAI && viewModel.aiError == nil {
                         emptyState

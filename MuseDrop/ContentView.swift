@@ -12,7 +12,9 @@ enum NavigationTab: Hashable {
     case downloads
     case library
     case studyPackHistory
+    case community
     case externalDevices
+    case help
     case settings
 }
 
@@ -51,11 +53,27 @@ struct ContentView: View {
                             .tag(NavigationTab.library)
                         Label("Study Packs", systemImage: "text.book.closed")
                             .tag(NavigationTab.studyPackHistory)
+                        Label {
+                            HStack(spacing: 6) {
+                                Text("Community")
+                                Text("BETA")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1)
+                                    .background(Theme.accent.opacity(0.18), in: Capsule())
+                                    .foregroundStyle(Theme.accent)
+                            }
+                        } icon: {
+                            Image(systemName: "person.3")
+                        }
+                        .tag(NavigationTab.community)
                         Label("Downloads", systemImage: "arrow.down.circle")
                             .tag(NavigationTab.downloads)
                     }
 
                     Section {
+                        Label("Help", systemImage: "questionmark.circle")
+                            .tag(NavigationTab.help)
                         Label("Settings", systemImage: "gearshape")
                             .tag(NavigationTab.settings)
                     }
@@ -75,8 +93,12 @@ struct ContentView: View {
                     LibraryView()
                 case .studyPackHistory:
                     StudyPackHistoryView()
+                case .community:
+                    CommunityView()
                 case .externalDevices:
                     ExternalDrivesView()
+                case .help:
+                    HelpView()
                 case .settings:
                     SettingsView()
                 }
