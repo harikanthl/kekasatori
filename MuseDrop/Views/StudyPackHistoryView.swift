@@ -428,7 +428,7 @@ enum PlayerWindowPresenter {
     static func open(for item: DownloadItem, controller: Binding<NSWindowController?>) {
         close(for: item.id)
 
-        let hostingController = NSHostingController(rootView: PlayerView(item: item))
+        let hostingController = NSHostingController(rootView: ThemedPlayerRoot(item: item))
 
         let window = NSWindow(contentViewController: hostingController)
         window.title = item.displayTitle
@@ -465,6 +465,7 @@ enum PlayerWindowPresenter {
                 if openWindows[itemId] === windowController {
                     openWindows.removeValue(forKey: itemId)
                 }
+                NowPlayingCenter.shared.unregister(id: itemId)
                 // Drop the caller's reference too, so the controller — and its
                 // window, hosting view, PlayerViewModel, and any web view —
                 // deallocates instead of lingering (and playing) in the background.
@@ -476,6 +477,11 @@ enum PlayerWindowPresenter {
 
         observerTokens[item.id] = token
         openWindows[item.id] = windowController
+        NowPlayingCenter.shared.register(
+            id: item.id,
+            title: item.displayTitle,
+            isPaper: item.isResearchDocument
+        )
 
         if let existing = controller.wrappedValue, existing !== windowController {
             existing.close()
@@ -487,6 +493,16 @@ enum PlayerWindowPresenter {
         window.makeKeyAndOrderFront(nil)
     }
     
+    /// Bring an already-open player window to the front. Used by the Library's
+    /// Now Playing bar to reconnect with a window the user clicked away from.
+    @MainActor
+    static func focus(for itemId: UUID) {
+        guard let controller = openWindows[itemId], let window = controller.window else { return }
+        NowPlayingCenter.shared.bringToFront(id: itemId)
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
     @MainActor
     static func close(for itemId: UUID) {
         guard let controller = openWindows[itemId] else { return }
@@ -495,5 +511,6 @@ enum PlayerWindowPresenter {
         if let token = observerTokens.removeValue(forKey: itemId) {
             NotificationCenter.default.removeObserver(token)
         }
+        NowPlayingCenter.shared.unregister(id: itemId)
     }
 }

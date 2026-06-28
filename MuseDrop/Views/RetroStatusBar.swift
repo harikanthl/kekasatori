@@ -166,25 +166,13 @@ private struct RetroStatusContent: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 7)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(Color(red: 0.06, green: 0.07, blue: 0.10))
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(tint.opacity(0.12))
-            }
-        }
-        .overlay {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(tint.opacity(0.45), lineWidth: 1)
-        }
-        .shadow(color: tint.opacity(0.30), radius: 7)
+        .retroBarChrome(tint: tint)
     }
 
     @ViewBuilder
     private var leading: some View {
         if status.kind == .working {
-            BlinkingPrompt(paused: reduceMotion, tint: tint)
+            RetroPrompt(paused: reduceMotion, tint: tint)
         } else {
             Image(systemName: status.kind.symbol)
                 .foregroundStyle(tint)
@@ -192,10 +180,44 @@ private struct RetroStatusContent: View {
     }
 }
 
+// MARK: - Reusable retro chrome
+
+/// The terminal/CRT panel look — dark fill, tinted wash, glowing hairline border.
+/// Shared by `RetroStatusBar` and the Library's `NowPlayingBar` so the bars stay
+/// visually identical from a single source.
+struct RetroBarChrome: ViewModifier {
+    var tint: Color
+    var cornerRadius: CGFloat = 8
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                ZStack {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(Color(red: 0.06, green: 0.07, blue: 0.10))
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(tint.opacity(0.12))
+                }
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(tint.opacity(0.45), lineWidth: 1)
+            }
+            .shadow(color: tint.opacity(0.30), radius: 7)
+    }
+}
+
+extension View {
+    /// Wraps content in the retro terminal panel look. See `RetroBarChrome`.
+    func retroBarChrome(tint: Color, cornerRadius: CGFloat = 8) -> some View {
+        modifier(RetroBarChrome(tint: tint, cornerRadius: cornerRadius))
+    }
+}
+
 // MARK: - Retro animation pieces
 
-/// A terminal-style `>` that blinks like a cursor.
-private struct BlinkingPrompt: View {
+/// A terminal-style `>` that blinks like a cursor. Reusable across retro bars.
+struct RetroPrompt: View {
     let paused: Bool
     let tint: Color
 

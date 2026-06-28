@@ -9,6 +9,11 @@ import SwiftUI
 
 enum NavigationTab: Hashable {
     case home
+    case discover
+    case compare
+    case run
+    case code
+    case learn
     case downloads
     case library
     case studyPackHistory
@@ -20,6 +25,9 @@ enum NavigationTab: Hashable {
 
 struct ContentView: View {
     @State private var selectedTab: NavigationTab = .home
+    // Keep the Monaco-backed tabs alive after first visit (no reload/flash).
+    @State private var visitedCode = false
+    @State private var visitedLearn = false
     @AppStorage("hasSeenWelcome") private var hasSeenWelcome = false
     @State private var showWelcome = false
     @State private var showPersistenceWarning = DataStore.shared.persistenceDegraded
@@ -49,6 +57,16 @@ struct ContentView: View {
                     Section("Main") {
                         Label("Home", systemImage: "house")
                             .tag(NavigationTab.home)
+                        Label("Discover", systemImage: "sparkle.magnifyingglass")
+                            .tag(NavigationTab.discover)
+                        Label("Compare", systemImage: "rectangle.split.3x1")
+                            .tag(NavigationTab.compare)
+                        Label("Run", systemImage: "chart.bar.xaxis")
+                            .tag(NavigationTab.run)
+                        Label("Code", systemImage: "chevron.left.forwardslash.chevron.right")
+                            .tag(NavigationTab.code)
+                        Label("Learn", systemImage: "graduationcap")
+                            .tag(NavigationTab.learn)
                         Label("Library", systemImage: "square.stack.3d.up")
                             .tag(NavigationTab.library)
                         Label("Study Packs", systemImage: "text.book.closed")
@@ -76,6 +94,10 @@ struct ContentView: View {
                             .tag(NavigationTab.help)
                         Label("Settings", systemImage: "gearshape")
                             .tag(NavigationTab.settings)
+                    } header: {
+                        // Gold rule separating Main from Help / Settings.
+                        SectionRule()
+                            .padding(.vertical, Theme.Spacing.xs)
                     }
                 }
                 .listStyle(.sidebar)
@@ -83,25 +105,53 @@ struct ContentView: View {
             }
             .navigationSplitViewColumnWidth(min: 220, ideal: 240)
         } detail: {
-            Group {
-                switch selectedTab {
-                case .home:
-                    HomeView(selectedTab: $selectedTab)
-                case .downloads:
-                    DownloadsView()
-                case .library:
-                    LibraryView()
-                case .studyPackHistory:
-                    StudyPackHistoryView()
-                case .community:
-                    CommunityView()
-                case .externalDevices:
-                    ExternalDrivesView()
-                case .help:
-                    HelpView()
-                case .settings:
-                    SettingsView()
+            ZStack {
+                // Lightweight tabs — created/destroyed freely on switch.
+                Group {
+                    switch selectedTab {
+                    case .home:
+                        HomeView(selectedTab: $selectedTab)
+                    case .discover:
+                        DiscoverView()
+                    case .compare:
+                        PromptLabView()
+                    case .run:
+                        RunView()
+                    case .downloads:
+                        DownloadsView()
+                    case .library:
+                        LibraryView()
+                    case .studyPackHistory:
+                        StudyPackHistoryView()
+                    case .community:
+                        CommunityView()
+                    case .externalDevices:
+                        ExternalDrivesView()
+                    case .help:
+                        HelpView()
+                    case .settings:
+                        SettingsView()
+                    case .code, .learn:
+                        Color.clear   // rendered persistently below
+                    }
                 }
+
+                // WebView-heavy tabs (Monaco) — kept alive after first visit so
+                // they don't reload/flash every time you navigate back.
+                if visitedCode {
+                    CodeBoxView()
+                        .opacity(selectedTab == .code ? 1 : 0)
+                        .allowsHitTesting(selectedTab == .code)
+                }
+                if visitedLearn {
+                    LearnView()
+                        .opacity(selectedTab == .learn ? 1 : 0)
+                        .allowsHitTesting(selectedTab == .learn)
+                }
+            }
+            .onChange(of: selectedTab) { _, tab in
+                if tab == .code { visitedCode = true }
+                if tab == .learn { visitedLearn = true }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background {

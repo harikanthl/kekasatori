@@ -343,8 +343,8 @@ struct HomeView: View {
     private var recentSection: some View {
         if !viewModel.recentLinks.isEmpty {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-                SectionHeader(
-                    "Recent",
+                RuledSectionHeader(
+                    title: "Recent",
                     systemImage: "clock.arrow.circlepath",
                     trailing: AnyView(
                         Button("Clear") { showClearRecentConfirmation = true }

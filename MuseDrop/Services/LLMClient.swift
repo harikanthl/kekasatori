@@ -18,10 +18,15 @@ enum LLMRole: String, Codable, Sendable {
 struct LLMMessage: Codable, Sendable {
     var role: LLMRole
     var content: String
+    /// PNG image bytes for multimodal (vision) input. Empty for text-only turns.
+    /// Only honored by cloud providers whose model is vision-capable; the
+    /// on-device route ignores images.
+    var images: [Data]
 
-    init(_ role: LLMRole, _ content: String) {
+    init(_ role: LLMRole, _ content: String, images: [Data] = []) {
         self.role = role
         self.content = content
+        self.images = images
     }
 }
 

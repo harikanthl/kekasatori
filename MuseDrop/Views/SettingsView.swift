@@ -6,12 +6,19 @@
 //
 
 import SwiftUI
+import AppKit
 
 struct SettingsView: View {
     @StateObject private var viewModel = SettingsViewModel()
     @ObservedObject private var themeManager = ThemeManager.shared
     @State private var showClearHistoryAlert = false
     @State private var showClearLibraryAlert = false
+    @State private var mcpMessage: String?
+    @State private var mcpConnecting = false
+    private let mcpConnector = MCPServerConnector()
+    @State private var kaggleUserInput = KeychainService.get(KeychainService.Account.kaggleUsername) ?? ""
+    @State private var kaggleKeyInput = ""
+    @State private var kaggleSaved = KeychainService.has(KeychainService.Account.kaggleKey)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -32,6 +39,8 @@ struct SettingsView: View {
                 downloadsSection
                 aiSection
                 aiProvidersSection
+                mcpSection
+                kaggleSection
                 manimSection
                 librarySection
                 dataManagementSection
@@ -85,6 +94,13 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         Section {
+            Picker("Mode", selection: $themeManager.appearance) {
+                ForEach(AppAppearance.allCases) { appearance in
+                    Text(appearance.displayName).tag(appearance)
+                }
+            }
+            .pickerStyle(.segmented)
+
             Picker("Theme", selection: $themeManager.theme) {
                 ForEach(AppTheme.allCases) { theme in
                     Text(theme.displayName).tag(theme)
@@ -171,7 +187,9 @@ struct SettingsView: View {
     private var aiProvidersSection: some View {
         Section {
             Picker("Provider", selection: $viewModel.llmPreset) {
-                ForEach(LLMProviderPreset.allCases) { preset in
+                // RunPod is a per-endpoint Compare/Run target (added from Compare),
+                // not a global tutor provider, so it's excluded here.
+                ForEach(LLMProviderPreset.allCases.filter { $0 != .runPod }) { preset in
                     Text(preset.displayName).tag(preset)
                 }
             }
@@ -239,6 +257,16 @@ struct SettingsView: View {
             }
             .onChange(of: viewModel.llmEnableRAG) { _, _ in viewModel.saveLLMSettings() }
 
+            Toggle(isOn: $viewModel.llmAnalyzeFigures) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Analyse figures, charts & tables")
+                    Text("Sends pages with figures to your vision-capable cloud model to extract graph data and tables. Off by default — these page images leave your Mac only when enabled.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: viewModel.llmAnalyzeFigures) { _, _ in viewModel.saveLLMSettings() }
+
             Label(viewModel.llmStatusMessage, systemImage: "antenna.radiowaves.left.and.right")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -250,6 +278,124 @@ struct SettingsView: View {
         } header: {
             SectionHeader("AI Providers (Tutor)", systemImage: "bubble.left.and.bubble.right", tint: Theme.accent)
         }
+    }
+
+    // MARK: - Agents (MCP)
+
+    private var mcpSection: some View {
+        Section {
+            if mcpConnector.isAvailable, let path = mcpConnector.binaryURL?.path {
+                Label("Server ready", systemImage: "checkmark.seal.fill")
+                    .font(.caption)
+                    .foregroundStyle(Theme.success)
+
+                VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                    Text("Embedded MCP server")
+                    Text(path)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .lineLimit(2)
+                }
+
+                HStack {
+                    Button {
+                        mcpConnecting = true
+                        mcpMessage = nil
+                        Task {
+                            let result = await mcpConnector.connectClaudeCode()
+                            mcpMessage = result.message
+                            mcpConnecting = false
+                        }
+                    } label: {
+                        if mcpConnecting {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Label("Add to Claude Code", systemImage: "terminal")
+                        }
+                    }
+                    .disabled(mcpConnecting)
+
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(mcpConnector.configJSON(), forType: .string)
+                        mcpMessage = "Config copied — paste into Cursor or Claude Desktop’s mcpServers."
+                    } label: {
+                        Label("Copy config (Cursor / Claude Desktop)", systemImage: "doc.on.doc")
+                    }
+                }
+
+                if let mcpMessage {
+                    Text(mcpMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Text("Lets MCP clients (Claude Code, Cursor, OpenClaw) drive Kekasatori. Currently exposes a scholarly literature search; more tools coming.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Label("Server not found in this build", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(Theme.warning)
+                Text("Run a full build of the app so the embedded MCP server is bundled.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } header: {
+            SectionHeader("Agents (MCP)", systemImage: "point.3.connected.trianglepath.dotted", tint: Theme.accent)
+        }
+    }
+
+    // MARK: - Learn data (Kaggle)
+
+    private var kaggleSection: some View {
+        Section {
+            if kaggleSaved {
+                Label("Kaggle token saved", systemImage: "checkmark.seal.fill")
+                    .font(.caption)
+                    .foregroundStyle(Theme.success)
+            }
+            TextField("Kaggle username", text: $kaggleUserInput)
+                .textFieldStyle(.roundedBorder)
+            HStack {
+                SecureField(kaggleSaved ? "API key saved — enter to replace" : "Kaggle API key",
+                            text: $kaggleKeyInput)
+                    .textFieldStyle(.roundedBorder)
+                Button("Save") { saveKaggle() }
+                    .disabled(kaggleUserInput.trimmingCharacters(in: .whitespaces).isEmpty
+                              || kaggleKeyInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                if kaggleSaved {
+                    Button("Clear", role: .destructive) { clearKaggle() }
+                }
+            }
+            Text("Used by Learn's Kaggle data lessons to download real datasets. Create a token at kaggle.com → Settings → API. Stored in your Keychain; sent only to the lesson's container.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        } header: {
+            SectionHeader("Learn data (Kaggle)", systemImage: "tray.and.arrow.down", tint: Theme.accent)
+        }
+    }
+
+    private func saveKaggle() {
+        let user = kaggleUserInput.trimmingCharacters(in: .whitespaces)
+        let key = kaggleKeyInput.trimmingCharacters(in: .whitespaces)
+        guard !user.isEmpty, !key.isEmpty else { return }
+        KeychainService.set(user, for: KeychainService.Account.kaggleUsername)
+        KeychainService.set(key, for: KeychainService.Account.kaggleKey)
+        kaggleKeyInput = ""
+        kaggleSaved = KeychainService.has(KeychainService.Account.kaggleKey)
+    }
+
+    private func clearKaggle() {
+        KeychainService.delete(KeychainService.Account.kaggleUsername)
+        KeychainService.delete(KeychainService.Account.kaggleKey)
+        kaggleUserInput = ""
+        kaggleKeyInput = ""
+        kaggleSaved = false
     }
 
     // MARK: - Math Animations (Manim)

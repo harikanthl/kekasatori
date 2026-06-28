@@ -17,10 +17,13 @@ struct LibraryView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.section) {
-                ScreenHeader(
-                    title: "Library",
-                    systemImage: "square.stack.3d.up"
-                )
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                    ScreenHeader(
+                        title: "Library",
+                        systemImage: "square.stack.3d.up"
+                    )
+                    SectionRule()
+                }
                 .screenColumn()
                 .padding(.top, Theme.Spacing.xl)
 
@@ -98,6 +101,10 @@ struct LibraryView: View {
             if let selected = viewModel.selectedItem {
                 confirmDelete(selected)
             }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            NowPlayingBar()
+                .screenColumn()
         }
         .onAppear { viewModel.refreshMastery() }
     }
@@ -260,11 +267,20 @@ struct ModernMediaCard: View {
                     Image(nsImage: image)
                         .resizable()
                         .scaledToFill()
+                } else if item.isResearchDocument {
+                    // Papers aren't playable — papercraft art, never a play glyph.
+                    Image("ThumbAI")
+                        .resizable()
+                        .scaledToFill()
+                } else if item.isAudioMedia {
+                    Image("ThumbAudio")
+                        .resizable()
+                        .scaledToFill()
                 } else {
                     Rectangle()
                         .fill(.quaternary)
                         .overlay {
-                            Image(systemName: item.isAudioMedia ? "music.note" : "play.circle")
+                            Image(systemName: "play.circle")
                                 .font(.system(size: 40, weight: .regular))
                                 .foregroundStyle(.secondary)
                                 .symbolRenderingMode(.hierarchical)
@@ -403,8 +419,10 @@ extension NSBezierPath {
                 path.move(to: points[0])
             case .lineTo:
                 path.addLine(to: points[0])
-            case .curveTo:
+            case .curveTo, .cubicCurveTo:
                 path.addCurve(to: points[2], control1: points[0], control2: points[1])
+            case .quadraticCurveTo:
+                path.addQuadCurve(to: points[1], control: points[0])
             case .closePath:
                 path.closeSubpath()
             @unknown default:

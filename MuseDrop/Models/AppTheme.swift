@@ -7,6 +7,33 @@
 //
 
 import SwiftUI
+import AppKit
+
+/// Light / Dark / System appearance, independent of the accent theme. Applied
+/// app-wide via `NSApp.appearance` so it also covers AppKit reader/player windows.
+enum AppAppearance: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .system: return "System"
+        case .light:  return "Light"
+        case .dark:   return "Dark"
+        }
+    }
+
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .system: return nil
+        case .light:  return NSAppearance(named: .aqua)
+        case .dark:   return NSAppearance(named: .darkAqua)
+        }
+    }
+}
 
 enum AppTheme: String, CaseIterable, Identifiable {
     case system
@@ -63,6 +90,7 @@ enum AppTheme: String, CaseIterable, Identifiable {
 final class ThemeManager: ObservableObject {
     static let shared = ThemeManager()
     private static let key = "appTheme"
+    private static let appearanceKey = "appAppearance"
 
     @Published var theme: AppTheme {
         didSet {
@@ -71,7 +99,19 @@ final class ThemeManager: ObservableObject {
         }
     }
 
+    /// System / Light / Dark, overriding the OS appearance for the whole app.
+    @Published var appearance: AppAppearance {
+        didSet {
+            UserDefaults.standard.set(appearance.rawValue, forKey: Self.appearanceKey)
+            applyAppearance()
+        }
+    }
+
     var accent: Color { theme.accent }
+
+    private func applyAppearance() {
+        NSApp?.appearance = appearance.nsAppearance
+    }
 
     /// Subtle hue laid over the system background so each theme tints the whole
     /// app. `.system` adds nothing (pure system colors).
@@ -83,7 +123,13 @@ final class ThemeManager: ObservableObject {
         let raw = UserDefaults.standard.string(forKey: Self.key) ?? ""
         let initial = AppTheme(rawValue: raw) ?? .system
         theme = initial
-        // didSet doesn't fire for the initializer assignment, so apply manually.
+
+        let appearanceRaw = UserDefaults.standard.string(forKey: Self.appearanceKey) ?? ""
+        let initialAppearance = AppAppearance(rawValue: appearanceRaw) ?? .system
+        appearance = initialAppearance
+
+        // didSet doesn't fire for initializer assignments, so apply manually.
         Theme.applyAccent(initial.accent)
+        applyAppearance()
     }
 }

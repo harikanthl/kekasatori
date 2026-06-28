@@ -55,6 +55,10 @@ enum Theme {
     static let danger = Color.red                    // failed · destructive · delete
     static let idle = Color.secondary                // queued · neutral metadata
 
+    /// Editorial gold — a structural accent for section rules/dividers (not a
+    /// status). Used to give list/section screens a crisp, ruled look.
+    static let gold = Color(red: 0.78, green: 0.60, blue: 0.20)
+
     // Surfaces
     static let cardFill = Color(nsColor: .controlBackgroundColor)
     static let fieldFill = Color(nsColor: .textBackgroundColor)
@@ -180,6 +184,51 @@ struct ScreenHeader: View {
                 }
             }
             Spacer(minLength: 0)
+        }
+    }
+}
+
+/// A thin editorial gold rule — the structural separator used to give screens a
+/// crisp, ruled look. Horizontal by default; pass `axis: .vertical` for a column
+/// divider. Reusable across Discover, Library, Home, the reader, etc.
+struct SectionRule: View {
+    var axis: Axis = .horizontal
+    var color: Color = Theme.gold
+    var thickness: CGFloat = 1.5
+    var opacity: Double = 0.85
+
+    var body: some View {
+        Rectangle()
+            .fill(color)
+            .opacity(opacity)
+            .frame(width: axis == .vertical ? thickness : nil,
+                   height: axis == .horizontal ? thickness : nil)
+            .frame(maxWidth: axis == .horizontal ? .infinity : nil,
+                   maxHeight: axis == .vertical ? .infinity : nil)
+    }
+}
+
+/// A title with a leading gold-tinted symbol over a gold rule — the ruled
+/// section header used to head a screen's sections consistently.
+struct RuledSectionHeader: View {
+    let title: String
+    var systemImage: String? = nil
+    var trailing: AnyView? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Spacing.sm) {
+                if let systemImage {
+                    Image(systemName: systemImage)
+                        .font(.headline)
+                        .foregroundStyle(Theme.gold)
+                }
+                Text(title)
+                    .font(.title3.weight(.semibold))
+                Spacer(minLength: Theme.Spacing.md)
+                if let trailing { trailing }
+            }
+            SectionRule()
         }
     }
 }

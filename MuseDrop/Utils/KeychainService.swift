@@ -76,6 +76,17 @@ enum KeychainService {
     enum Account {
         /// Chat LLM key (OpenRouter or any OpenAI-compatible gateway).
         static let llmChat = "llm.chat.apiKey"
+        /// Hugging Face access token (`hf_…`) — the Inference Providers router and
+        /// any other HF surface (Endpoints, Jobs) share this one token.
+        static let huggingFace = "huggingface.apiKey"
+        /// RunPod API key — the Serverless OpenAI-compatible endpoints (Compare /
+        /// Run) and, later, raw GPU provisioning (Phase 3b) share this one key.
+        static let runPod = "runpod.apiKey"
+        /// Kaggle API credentials (from kaggle.json) — injected as
+        /// KAGGLE_USERNAME / KAGGLE_KEY into Learn data lessons that pull a real
+        /// Kaggle dataset.
+        static let kaggleUsername = "kaggle.username"
+        static let kaggleKey = "kaggle.apiKey"
         /// Optional separate embeddings key (e.g. OpenAI text-embedding) for cloud RAG.
         static let embeddings = "llm.embeddings.apiKey"
         /// Google Gemini key for the podcast generator (script + multi-speaker TTS).

@@ -31,7 +31,7 @@ struct StudyToolsPanel: View {
             }
             
             StudyTabBar(tabs: availableStudyTabs, selection: $viewModel.selectedStudyTab)
-            Divider()
+            SectionRule()
 
             translationBar
 

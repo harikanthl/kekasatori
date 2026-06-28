@@ -11,31 +11,50 @@ import Foundation
 enum LLMProviderPreset: String, CaseIterable, Identifiable, Codable {
     case onDevice
     case openRouter
+    case huggingFace
+    case runPod
     case custom
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
-        case .onDevice:   return "On-Device (Apple Intelligence)"
-        case .openRouter: return "OpenRouter (BYOK)"
-        case .custom:     return "Custom (OpenAI-compatible)"
+        case .onDevice:    return "On-Device (Apple Intelligence)"
+        case .openRouter:  return "OpenRouter (BYOK)"
+        case .huggingFace: return "Hugging Face (Router)"
+        case .runPod:      return "RunPod (Serverless)"
+        case .custom:      return "Custom (OpenAI-compatible)"
         }
     }
 
-    /// Base URL for OpenAI-compatible providers. nil for on-device.
+    /// Base URL for OpenAI-compatible providers. nil for on-device. RunPod is nil
+    /// too: its endpoint is per-deployment (`…/v2/{id}/openai/v1`), so the full
+    /// URL lives on the `ModelProfile`, not the preset.
     var defaultBaseURL: String? {
         switch self {
-        case .onDevice:   return nil
-        case .openRouter: return "https://openrouter.ai/api/v1"
-        case .custom:     return ""
+        case .onDevice:    return nil
+        case .openRouter:  return "https://openrouter.ai/api/v1"
+        case .huggingFace: return "https://router.huggingface.co/v1"
+        case .runPod:      return nil
+        case .custom:      return ""
         }
     }
 
     var requiresAPIKey: Bool {
         switch self {
         case .onDevice: return false
-        case .openRouter, .custom: return true
+        case .openRouter, .huggingFace, .runPod, .custom: return true
+        }
+    }
+
+    /// Keychain account holding this preset's API key. nil when no key applies.
+    var keychainAccount: String? {
+        switch self {
+        case .onDevice:    return nil
+        case .openRouter:  return KeychainService.Account.llmChat
+        case .huggingFace: return KeychainService.Account.huggingFace
+        case .runPod:      return KeychainService.Account.runPod
+        case .custom:      return KeychainService.Account.llmChat
         }
     }
 }
@@ -77,6 +96,25 @@ enum LLMModelPreset {
     static let defaultOpenRouterModel = "anthropic/claude-sonnet-4.6"
 }
 
+/// Heuristic capability checks for a model id. Used to gate vision (multimodal)
+/// requests so we never attach images to a text-only model.
+enum LLMModelCapabilities {
+    /// Whether the model can accept image input. Conservative: unknown/custom
+    /// ids default to `false` so figure analysis silently no-ops rather than
+    /// erroring against a text-only endpoint.
+    static func supportsVision(_ modelId: String) -> Bool {
+        let id = modelId.lowercased()
+        // Known vision-capable families on OpenRouter / OpenAI-compatible gateways.
+        if id.contains("claude") { return true }            // Claude 3+ are multimodal
+        if id.contains("gemini") { return true }
+        if id.contains("gpt-5") || id.contains("gpt-4o") || id.contains("gpt-4.1") { return true }
+        if id.contains("grok-4") || id.contains("grok-build") || id.contains("grok-2-vision") { return true }
+        if id.contains("glm-5") || id.contains("glm-4v") { return true }
+        if id.contains("vision") || id.contains("-vl") || id.contains("multimodal") { return true }
+        return false
+    }
+}
+
 /// Persisted, non-secret provider settings (UserDefaults-backed).
 struct LLMProviderSettings: Codable, Equatable {
     var preset: LLMProviderPreset
@@ -86,14 +124,50 @@ struct LLMProviderSettings: Codable, Equatable {
     var preferOnDevice: Bool
     /// Enable retrieval-augmented context (RAG) for tutor answers.
     var enableRAG: Bool
+    /// Opt-in: send figure/chart page images to a vision-capable cloud model to
+    /// extract graph data and tables. Requires a cloud key and a vision model.
+    /// Off by default — images leave the device only when the user enables this.
+    var analyzeFigures: Bool
+
+    init(preset: LLMProviderPreset,
+         modelId: String,
+         baseURL: String,
+         preferOnDevice: Bool,
+         enableRAG: Bool,
+         analyzeFigures: Bool = false) {
+        self.preset = preset
+        self.modelId = modelId
+        self.baseURL = baseURL
+        self.preferOnDevice = preferOnDevice
+        self.enableRAG = enableRAG
+        self.analyzeFigures = analyzeFigures
+    }
 
     static let `default` = LLMProviderSettings(
         preset: .openRouter,
         modelId: LLMModelPreset.defaultOpenRouterModel,
         baseURL: LLMProviderPreset.openRouter.defaultBaseURL ?? "",
         preferOnDevice: true,
-        enableRAG: true
+        enableRAG: true,
+        analyzeFigures: false
     )
+
+    // MARK: Codable (resilient to fields added across versions)
+
+    private enum CodingKeys: String, CodingKey {
+        case preset, modelId, baseURL, preferOnDevice, enableRAG, analyzeFigures
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let fallback = LLMProviderSettings.default
+        preset = try c.decodeIfPresent(LLMProviderPreset.self, forKey: .preset) ?? fallback.preset
+        modelId = try c.decodeIfPresent(String.self, forKey: .modelId) ?? fallback.modelId
+        baseURL = try c.decodeIfPresent(String.self, forKey: .baseURL) ?? fallback.baseURL
+        preferOnDevice = try c.decodeIfPresent(Bool.self, forKey: .preferOnDevice) ?? fallback.preferOnDevice
+        enableRAG = try c.decodeIfPresent(Bool.self, forKey: .enableRAG) ?? fallback.enableRAG
+        analyzeFigures = try c.decodeIfPresent(Bool.self, forKey: .analyzeFigures) ?? fallback.analyzeFigures
+    }
 
     // MARK: UserDefaults persistence
 

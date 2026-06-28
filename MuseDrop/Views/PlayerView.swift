@@ -44,6 +44,9 @@ struct PlayerView: View {
             viewModel.prepare(for: item)
             viewModel.loadMedia(item)
         }
+        .onChange(of: viewModel.isPlaying) { _, playing in
+            NowPlayingCenter.shared.setPlaying(playing, for: item.id)
+        }
         .onDisappear {
             viewModel.cleanup()
         }
@@ -300,5 +303,23 @@ private struct PlayerWindowLifecycle: NSViewRepresentable {
         deinit {
             detach()
         }
+    }
+}
+
+// MARK: - Themed window root
+
+/// Root for a player window's hosting controller. Player windows are separate
+/// `NSHostingController`s, so — unlike the main window's `ContentView` — they
+/// don't observe `ThemeManager` and never receive the accent tint. That left
+/// native controls on the system accent and froze the accent at open time.
+/// Observing here re-renders the window on theme change and applies the tint,
+/// matching the main window. (Light/Dark already follows via `NSApp.appearance`.)
+struct ThemedPlayerRoot: View {
+    let item: DownloadItem
+    @ObservedObject private var theme = ThemeManager.shared
+
+    var body: some View {
+        PlayerView(item: item)
+            .tint(theme.accent)
     }
 }

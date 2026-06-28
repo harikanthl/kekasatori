@@ -244,7 +244,9 @@ final class MediaAIService: Sendable {
                 phase: .finishing,
                 detail: "Extracting text from research paper…"
             ))
-            let text = PDFTextExtractor.extractText(bundleURL: bundleURL)
+            let base = await PDFTextExtractor.extractTextWithOCR(bundleURL: bundleURL)
+            let text = await PaperEnrichmentService.shared.appended(
+                to: base, bundleURL: bundleURL, settings: LLMProviderSettings.load())
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw MediaAIError.analysisFailed("Could not extract text from this paper.")
             }

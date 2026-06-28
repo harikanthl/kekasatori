@@ -24,8 +24,15 @@ actor LLMRouter {
         return false
     }
 
-    /// Whether a cloud chat key is configured.
+    /// Whether a cloud chat key is configured (the shared OpenRouter/custom key).
     nonisolated var hasCloudKey: Bool { KeychainService.has(KeychainService.Account.llmChat) }
+
+    /// Whether a key exists for this preset's provider (preset-aware: HF uses its
+    /// own token, OpenRouter/custom share `llmChat`).
+    nonisolated func hasKey(for settings: LLMProviderSettings) -> Bool {
+        guard let account = settings.preset.keychainAccount else { return false }
+        return KeychainService.has(account)
+    }
 
     /// Human-readable description of the active route, for UI.
     nonisolated func statusDescription(settings: LLMProviderSettings) -> String {
@@ -46,12 +53,32 @@ actor LLMRouter {
         switch settings.preset {
         case .onDevice:
             return isOnDeviceAvailable ? .onDevice : .unavailable
-        case .openRouter, .custom:
+        case .openRouter, .huggingFace, .runPod, .custom:
             if settings.preferOnDevice, isOnDeviceAvailable { return .onDevice }
-            if hasCloudKey { return .cloud(model: settings.modelId) }
+            if hasKey(for: settings) { return .cloud(model: settings.modelId) }
             if isOnDeviceAvailable { return .onDevice }   // graceful fallback
             return .unavailable
         }
+    }
+
+    /// Whether figure/chart analysis can run: user opted in, a cloud key exists,
+    /// and the configured model is vision-capable. (On-device can't see images.)
+    nonisolated func canAnalyzeFigures(settings: LLMProviderSettings) -> Bool {
+        settings.analyzeFigures
+            && hasCloudKey
+            && LLMModelCapabilities.supportsVision(settings.modelId)
+    }
+
+    /// One-shot completion forced through the cloud route (used for multimodal
+    /// figure analysis, which the on-device model cannot perform). Throws if no
+    /// cloud key is configured.
+    func cloudComplete(messages: [LLMMessage], settings: LLMProviderSettings) async throws -> String {
+        guard hasCloudKey else { throw LLMError.missingAPIKey }
+        let client = OpenAICompatibleLLMClient(
+            baseURL: settings.effectiveBaseURL,
+            apiKey: KeychainService.get(KeychainService.Account.llmChat)
+        )
+        return try await client.complete(messages: messages, model: settings.modelId)
     }
 
     /// Stream a chat completion via the resolved route.
@@ -68,7 +95,7 @@ actor LLMRouter {
         case .cloud(let model):
             let client = OpenAICompatibleLLMClient(
                 baseURL: settings.effectiveBaseURL,
-                apiKey: KeychainService.get(KeychainService.Account.llmChat)
+                apiKey: settings.preset.keychainAccount.flatMap { KeychainService.get($0) }
             )
             return client.stream(messages: messages, model: model)
         }

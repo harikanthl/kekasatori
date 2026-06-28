@@ -38,10 +38,28 @@ struct OpenAICompatibleLLMClient: LLMClient {
         let payload: [String: Any] = [
             "model": model,
             "stream": true,
-            "messages": messages.map { ["role": $0.role.rawValue, "content": $0.content] }
+            "messages": messages.map(Self.encodeMessage)
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
         return request
+    }
+
+    /// Serializes one message to the OpenAI chat schema. Text-only messages use
+    /// the plain `content: String` form; messages carrying images use the
+    /// content-parts array (`text` + `image_url` with base64 data URLs).
+    private static func encodeMessage(_ msg: LLMMessage) -> [String: Any] {
+        guard !msg.images.isEmpty else {
+            return ["role": msg.role.rawValue, "content": msg.content]
+        }
+        var parts: [[String: Any]] = []
+        if !msg.content.isEmpty {
+            parts.append(["type": "text", "text": msg.content])
+        }
+        for png in msg.images {
+            let dataURL = "data:image/png;base64,\(png.base64EncodedString())"
+            parts.append(["type": "image_url", "image_url": ["url": dataURL]])
+        }
+        return ["role": msg.role.rawValue, "content": parts]
     }
 
     func stream(messages: [LLMMessage], model: String) -> AsyncThrowingStream<String, Error> {

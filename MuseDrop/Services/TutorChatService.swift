@@ -90,7 +90,9 @@ actor TutorChatService {
         if let cached = sourceCache[item.id] { return cached }
 
         if item.isResearchDocument, let bundle = item.paperBundleURL {
-            let text = PDFTextExtractor.extractText(bundleURL: bundle)
+            let base = await PDFTextExtractor.extractTextWithOCR(bundleURL: bundle)
+            let text = await PaperEnrichmentService.shared.appended(
+                to: base, bundleURL: bundle, settings: LLMProviderSettings.load())
             if !text.isEmpty { return text }
         }
 

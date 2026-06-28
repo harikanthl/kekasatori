@@ -28,6 +28,13 @@ struct MuseDropApp: App {
     }
     
     private func setupApp() {
+        // Disk-backed shared image/URL cache so AsyncImage (paper thumbnails,
+        // library art, search results) reuses downloads across the app.
+        URLCache.shared = URLCache(
+            memoryCapacity: 64 * 1024 * 1024,    // 64 MB
+            diskCapacity: 512 * 1024 * 1024      // 512 MB
+        )
+
         // Create directories
         do {
             try PathUtils.ensureDirectoriesExist()

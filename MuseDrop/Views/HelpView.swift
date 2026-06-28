@@ -3,7 +3,7 @@
 //  MuseDrop
 //
 //  In-app guide: what each tab does and how to do the common things. Plain,
-//  scannable documentation — no network, no external links required.
+//  scannable documentation, no network or external links required.
 //
 
 import SwiftUI
@@ -22,6 +22,7 @@ struct HelpView: View {
 
                 tabsSection
                 howToSection
+                containersSection
                 tipsSection
 
                 Spacer(minLength: Theme.Spacing.xxl)
@@ -34,7 +35,7 @@ struct HelpView: View {
     // MARK: - Intro
 
     private var intro: some View {
-        Text("Kekasatori turns anything you can watch or read — videos, papers, articles, books — into a study session with AI tools. Paste a link on **Home**, pick how you want to use it, and the app builds a study pack you can revisit, master, and share.")
+        Text("Kekasatori turns anything you can watch or read (videos, papers, articles, books) into a study session with AI tools. Paste a link on **Home**, pick how you want to use it, and the app builds a study pack you can revisit, master, and share.")
             .font(.body)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
@@ -61,10 +62,15 @@ struct HelpView: View {
     }
 
     private static let tabs: [(icon: String, title: String, detail: String)] = [
-        ("house", "Home", "Your starting point. Paste any link into the command bar and choose a mode — Stream, Research, or Download. Recent links sit just below."),
-        ("square.stack.3d.up", "Library", "Everything you've downloaded — audio and video — ready to play, study, or organize."),
+        ("house", "Home", "Your starting point. Paste any link into the command bar and choose a mode: Stream, Research, or Download. Recent links sit just below."),
+        ("sparkle.magnifyingglass", "Discover", "Your research cockpit. Ask a research question and the agent plans searches, queries scholarly providers (arXiv, OpenAlex, and more, which you can toggle per run), screens and ranks results, and synthesizes a cited literature review with a live progress timeline. Switch to Trending to browse papers by domain, explore areas in the Taxonomy Browser, and add open-access papers to your Library."),
+        ("rectangle.split.3x1", "Compare", "A multi-model prompt arena. Add several models (cloud models via OpenRouter or local servers like Ollama and LM Studio), type one prompt, and run it across all of them at once. Responses stream into side-by-side columns, each showing elapsed time, token count, tokens/sec, and a cost estimate. Add a system prompt and save or load prompts as you go."),
+        ("chart.bar.xaxis", "Run", "Benchmark a model. Pick a model (from your Compare columns or a detected local server), choose a harness (lm-eval or inspect-ai), name a task such as gsm8k, set an example limit, and run. It executes inside a container, streams the log live, and scrapes the metrics (accuracy, loss, and so on) when it finishes. See the Containers note below to set up the runtime."),
+        ("chevron.left.forwardslash.chevron.right", "Code", "A code scratchpad that runs in a container. Write Python or Bash in the editor on the left and see streaming output on the right. Choose the image to run in (Python 3.12, PyTorch CPU/CUDA, Ubuntu, and others). Requires a container runtime (see the Containers note below); GPU passthrough isn't available locally on Mac."),
+        ("graduationcap", "Learn", "Hands-on ML challenges, LeetCode-style. Browse challenge categories, open one to read its Theory and Task, then write your implementation in the editor and run or check it. The results pane shows the container output alongside a loss-curve chart, and your progress is tracked per challenge and across the whole curriculum."),
+        ("square.stack.3d.up", "Library", "Everything you've downloaded (audio and video), ready to play, study, or organize."),
         ("text.book.closed", "Study Packs", "The study materials the app generates from each session: summaries, tutor chat, mind maps, notebooks, canvas. Track mastery, pin favorites, export, or share."),
-        ("person.3", "Community  ·  Beta", "Discover and share study packs on a decentralized network — no account, no server. Browse by subject or community, upvote, and import others' packs."),
+        ("person.3", "Community  ·  Beta", "Discover and share study packs on a decentralized network: no account, no server. Browse by subject or community, upvote, and import others' packs."),
         ("arrow.down.circle", "Downloads", "Active and queued downloads with live progress. Finished items move to your Library."),
         ("questionmark.circle", "Help", "This guide."),
         ("gearshape", "Settings", "Themes, default download formats, AI providers (for the tutor and podcasts), math animations, library location, and data management.")
@@ -77,9 +83,41 @@ struct HelpView: View {
             SectionHeader("How to…", systemImage: "list.number", tint: Theme.accent)
 
             VStack(spacing: Theme.Spacing.md) {
+                HelpGuide(icon: "sparkle.magnifyingglass", title: "Research a topic (Discover)", steps: [
+                    "Open **Discover** and pick a **field** (AI, Maths, Physics, Chemistry, Medicine).",
+                    "Type a research question and choose a **depth**: Quick (abstracts), Standard, or Thorough (reads more papers in full).",
+                    "Hit **Research**: it searches, reads the top open-access papers, and writes a cited synthesis with a skeptical critique pass.",
+                    "Expand a source's quoted excerpts, **Add to Library**, or export **BibTeX**."
+                ])
+                HelpGuide(icon: "rectangle.split.3x1", title: "Compare models (Compare)", steps: [
+                    "Open **Compare** → **Add**: cloud (OpenRouter / Hugging Face), a local server (Ollama / LM Studio), or **Add RunPod endpoint…**.",
+                    "Type one prompt (and an optional system prompt) and **Run**.",
+                    "Read the side-by-side columns: elapsed time, tokens/sec, and cost; the run's total estimate shows above.",
+                    "**Save set** to keep the prompt with its model line-up; reload it later from **Saved**."
+                ])
+                HelpGuide(icon: "chart.bar.xaxis", title: "Benchmark a model (Run)", steps: [
+                    "Open **Run**; make sure a container runtime is detected (install/start it from the panel if needed).",
+                    "Pick a model, a harness (lm-eval or inspect-ai), a task (e.g. gsm8k), and an example limit.",
+                    "**Run**, then watch the live log; scraped metrics (accuracy, loss, and so on) appear as chips when it finishes."
+                ])
+                HelpGuide(icon: "chevron.left.forwardslash.chevron.right", title: "Run code (Code)", steps: [
+                    "Open **Code** and choose a container image (Python, PyTorch, Ubuntu, …).",
+                    "Write Python or Bash on the left and **Run**; output streams on the right.",
+                    "Requires a container runtime (Docker, Podman, or Apple Container)."
+                ])
+                HelpGuide(icon: "graduationcap", title: "Practice ML (Learn)", steps: [
+                    "Open **Learn** and choose a challenge category, then a challenge.",
+                    "Read the **Theory** and **Task**, write your implementation, and **Run / Check**.",
+                    "See the output and a loss-curve; your progress is tracked per challenge."
+                ])
+                HelpGuide(icon: "point.3.connected.trianglepath.dotted", title: "Connect an MCP client (Agents)", steps: [
+                    "Open **Settings → Agents (MCP)**, which finds the MCP server bundled with the app.",
+                    "Click **Add to Claude Code**, or **Copy config** for Cursor / Claude Desktop.",
+                    "Then ask that client to “search papers about …” and it drives Kekasatori for you."
+                ])
                 HelpGuide(icon: "play.circle", title: "Stream & study a video", steps: [
                     "On Home, pick **Stream**.",
-                    "Paste a video link — or tap the search icon to find one on YouTube.",
+                    "Paste a video link, or tap the search icon to find one on YouTube.",
                     "Choose **Stream Audio** or **Stream Video**.",
                     "The player opens with study tools; nothing is saved to disk."
                 ])
@@ -90,7 +128,7 @@ struct HelpView: View {
                 ])
                 HelpGuide(icon: "doc.text.magnifyingglass", title: "Study a paper, article, or book", steps: [
                     "On Home, pick **Research**.",
-                    "Paste an arXiv / PubMed / DOI / PDF link or any article URL — or **Choose PDF** / drop a PDF.",
+                    "Paste an arXiv / PubMed / DOI / PDF link or any article URL, or use **Choose PDF** / drop a PDF.",
                     "Multi-chapter books and docs sites are crawled and combined into one document.",
                     "The reader opens with the same study tools as the player."
                 ])
@@ -111,15 +149,38 @@ struct HelpView: View {
                 ])
                 HelpGuide(icon: "person.3", title: "Share & use the Community (Beta)", steps: [
                     "In **Study Packs**, open a row's menu → **Share to Community…**.",
-                    "Pick a **Subject** and a **Community** (or Everyone) — or create a new community inline.",
+                    "Pick a **Subject** and a **Community** (or Everyone), or create a new community inline.",
                     "On the **Community** tab, filter by subject/community, **Import** packs, and upvote.",
                     "It's decentralized (Nostr + IPFS); the first share installs a small networking component."
                 ])
                 HelpGuide(icon: "shippingbox", title: "Export or import a pack", steps: [
                     "In **Study Packs**, use **Export Pack…** to save a portable .kekapack file.",
-                    "Use **Import Pack…** to load one shared with you — works fully offline."
+                    "Use **Import Pack…** to load one shared with you; it works fully offline."
                 ])
             }
+        }
+    }
+
+    // MARK: - Containers (Code & Run)
+
+    private var containersSection: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            SectionHeader("Containers (for Code & Run)", systemImage: "shippingbox", tint: Theme.accent)
+
+            Text("The **Code** and **Run** tabs execute everything inside a container, so they need a container runtime installed on your Mac. Until one is installed and running, those two tabs can't do anything. Discover, Compare, and the study tools work without it.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(Theme.Spacing.lg)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .cardSurface()
+
+            HelpGuide(icon: "cube.box", title: "Set up a container runtime", steps: [
+                "On macOS 26 with Apple Silicon, **Run** can install **Apple Container** (Apple's native runtime) for you: open **Run**, and in the engine panel use **Install**, then **Start**.",
+                "On older macOS or Intel, install **Docker Desktop** instead (Colima and Podman also work). The app auto-detects whichever is present.",
+                "Once a runtime is detected, both **Code** and **Run** light up. **Code** also lets you pick the image to run in (Python, PyTorch, Ubuntu, and others).",
+                "Note: no NVIDIA GPU is available inside any Mac container, so GPU training or serving needs remote compute."
+            ])
         }
     }
 
@@ -130,9 +191,9 @@ struct HelpView: View {
             SectionHeader("Good to know", systemImage: "lightbulb", tint: Theme.accent)
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 tip("Press ⌘V to paste a link straight into the Home command bar.")
-                tip("Stream mode never writes video to disk — great for a quick study pass.")
+                tip("Stream mode never writes video to disk; great for a quick study pass.")
                 tip("Your notebook and mastery progress stay private; they are never shared to the Community.")
-                tip("Community posts live on public relays, so availability can vary — your own posts are re-broadcast automatically.")
+                tip("Community posts live on public relays, so availability can vary; your own posts are re-broadcast automatically.")
             }
             .padding(Theme.Spacing.lg)
             .frame(maxWidth: .infinity, alignment: .leading)

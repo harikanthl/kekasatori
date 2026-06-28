@@ -245,6 +245,23 @@ struct PathUtils {
         guard let indexURL = excalidrawHostIndexURL() else { return nil }
         return indexURL.deletingLastPathComponent()
     }
+
+    /// Bundled Monaco editor host (index.html + vs/). Offline, no CDN.
+    static func monacoHostIndexURL() -> URL? {
+        if let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "MonacoHost") {
+            return url
+        }
+        if let resourcePath = Bundle.main.resourcePath {
+            let nested = URL(fileURLWithPath: resourcePath).appendingPathComponent("MonacoHost/index.html")
+            if FileManager.default.fileExists(atPath: nested.path) { return nested }
+        }
+        return nil
+    }
+
+    /// Directory WKWebView may read when loading Monaco (index + vs/).
+    static func monacoHostReadAccessURL() -> URL? {
+        monacoHostIndexURL()?.deletingLastPathComponent()
+    }
     
     static var ytDlpPath: URL {
         binDirectory.appendingPathComponent("yt-dlp")

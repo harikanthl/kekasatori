@@ -399,7 +399,7 @@ struct PaperReaderView: View {
         VStack(spacing: 0) {
             toolbar
             if showSearch, effectiveMode == .pdf { searchBar }
-            Divider()
+            SectionRule()
             content
         }
         .background(Color(nsColor: .windowBackgroundColor))

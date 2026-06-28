@@ -32,6 +32,8 @@ class SettingsViewModel: ObservableObject {
     @Published var llmBaseURL: String = ""
     @Published var llmPreferOnDevice: Bool = true
     @Published var llmEnableRAG: Bool = true
+    /// Opt-in: analyse figures/charts/tables in papers via a vision-capable cloud model.
+    @Published var llmAnalyzeFigures: Bool = false
     /// Write-only entry field; never pre-filled with the stored secret.
     @Published var llmAPIKeyInput: String = ""
     @Published var llmHasKey: Bool = false
@@ -89,6 +91,7 @@ class SettingsViewModel: ObservableObject {
         llmBaseURL = llm.baseURL
         llmPreferOnDevice = llm.preferOnDevice
         llmEnableRAG = llm.enableRAG
+        llmAnalyzeFigures = llm.analyzeFigures
         llmHasKey = KeychainService.has(KeychainService.Account.llmChat)
         refreshLLMStatus()
     }
@@ -101,7 +104,8 @@ class SettingsViewModel: ObservableObject {
             modelId: llmModelId,
             baseURL: llmBaseURL,
             preferOnDevice: llmPreferOnDevice,
-            enableRAG: llmEnableRAG
+            enableRAG: llmEnableRAG,
+            analyzeFigures: llmAnalyzeFigures
         )
     }
 

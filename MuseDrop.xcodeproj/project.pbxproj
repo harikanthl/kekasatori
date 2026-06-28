@@ -8,6 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		2822139F2EE16B3100C22375 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 2822139E2EE16B3100C22375 /* Lottie */; };
+		288182142FF093D7008B9DE7 /* MCP in Frameworks */ = {isa = PBXBuildFile; productRef = 288182132FF093D7008B9DE7 /* MCP */; };
+		288182182FF095AC008B9DE7 /* MCP in Frameworks */ = {isa = PBXBuildFile; productRef = 288182172FF095AC008B9DE7 /* MCP */; };
+		2881822C2FF099C0008B9DE7 /* kekasatori-mcp in CopyFiles */ = {isa = PBXBuildFile; fileRef = 2881820B2FF0934C008B9DE7 /* kekasatori-mcp */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		2884F7892FECECC40072585F /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 5A9C1E0000000000000000B2 /* Sparkle */; };
 		AABB0005CCDD0005EEFF0005 /* VecturaKit in Frameworks */ = {isa = PBXBuildFile; productRef = AABB0002CCDD0002EEFF0002 /* VecturaKit */; };
 		AABB0006CCDD0006EEFF0006 /* VecturaNLKit in Frameworks */ = {isa = PBXBuildFile; productRef = AABB0003CCDD0003EEFF0003 /* VecturaNLKit */; };
@@ -30,15 +33,62 @@
 			remoteGlobalIDString = 285221C82ECF287700D4DA72;
 			remoteInfo = MuseDrop;
 		};
+		288182252FF098E8008B9DE7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 285221C12ECF287700D4DA72 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2881820A2FF0934C008B9DE7;
+			remoteInfo = "kekasatori-mcp";
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		288182092FF0934C008B9DE7 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		288182272FF09911008B9DE7 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+				2881822C2FF099C0008B9DE7 /* kekasatori-mcp in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		285221C92ECF287700D4DA72 /* Kekasatori.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Kekasatori.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		285221D92ECF287800D4DA72 /* MuseDropTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MuseDropTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		285221E32ECF287800D4DA72 /* MuseDropUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MuseDropUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		2881820B2FF0934C008B9DE7 /* kekasatori-mcp */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "kekasatori-mcp"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		2881821A2FF096B5008B9DE7 /* Exceptions for "MuseDrop" folder in "kekasatori-mcp" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Models/PaperHit.swift,
+				Services/ArxivProvider.swift,
+				Services/EuropePmcProvider.swift,
+				Services/MCP/MCPTool.swift,
+				Services/MCP/SearchPapersTool.swift,
+				Services/OpenAlexProvider.swift,
+				Services/ScholarlyProvider.swift,
+				Services/ScholarlySearchService.swift,
+				Services/SemanticScholarProvider.swift,
+				Utils/LogService.swift,
+				Utils/PathUtils.swift,
+			);
+			target = 2881820A2FF0934C008B9DE7 /* kekasatori-mcp */;
+		};
 		5A9C1E0000000000000000C3 /* Exceptions for "MuseDrop" folder in "MuseDrop" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -53,6 +103,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				5A9C1E0000000000000000C3 /* Exceptions for "MuseDrop" folder in "MuseDrop" target */,
+				2881821A2FF096B5008B9DE7 /* Exceptions for "MuseDrop" folder in "kekasatori-mcp" target */,
 			);
 			path = MuseDrop;
 			sourceTree = "<group>";
@@ -67,6 +118,11 @@
 			path = MuseDropUITests;
 			sourceTree = "<group>";
 		};
+		2881820C2FF0934C008B9DE7 /* kekasatori-mcp */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "kekasatori-mcp";
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,6 +135,7 @@
 				AABB0005CCDD0005EEFF0005 /* VecturaKit in Frameworks */,
 				AABB0006CCDD0006EEFF0006 /* VecturaNLKit in Frameworks */,
 				AABB0007CCDD0007EEFF0007 /* VecturaOAIKit in Frameworks */,
+				288182182FF095AC008B9DE7 /* MCP in Frameworks */,
 				NOSTR0003BUILDFILE000001 /* NostrSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -97,6 +154,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		288182082FF0934C008B9DE7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				288182142FF093D7008B9DE7 /* MCP in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -106,6 +171,8 @@
 				285221CB2ECF287700D4DA72 /* MuseDrop */,
 				285221DC2ECF287800D4DA72 /* MuseDropTests */,
 				285221E62ECF287800D4DA72 /* MuseDropUITests */,
+				2881820C2FF0934C008B9DE7 /* kekasatori-mcp */,
+				288182122FF093D7008B9DE7 /* Frameworks */,
 				285221CA2ECF287700D4DA72 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -116,8 +183,16 @@
 				285221C92ECF287700D4DA72 /* Kekasatori.app */,
 				285221D92ECF287800D4DA72 /* MuseDropTests.xctest */,
 				285221E32ECF287800D4DA72 /* MuseDropUITests.xctest */,
+				2881820B2FF0934C008B9DE7 /* kekasatori-mcp */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		288182122FF093D7008B9DE7 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -132,10 +207,12 @@
 				285221C72ECF287700D4DA72 /* Resources */,
 				ECA1DRAW0002SCRIPT00001 /* Copy Excalidraw Host */,
 				ECA1MANIM0002SCRIPT00001 /* Copy Manim Scene */,
+				288182272FF09911008B9DE7 /* CopyFiles */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				288182262FF098E8008B9DE7 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				285221CB2ECF287700D4DA72 /* MuseDrop */,
@@ -148,6 +225,7 @@
 				AABB0004CCDD0004EEFF0004 /* VecturaOAIKit */,
 				5A9C1E0000000000000000B2 /* Sparkle */,
 				NOSTR0002PRODUCTDEP00001 /* NostrSDK */,
+				288182172FF095AC008B9DE7 /* MCP */,
 			);
 			productName = MuseDrop;
 			productReference = 285221C92ECF287700D4DA72 /* Kekasatori.app */;
@@ -199,6 +277,29 @@
 			productReference = 285221E32ECF287800D4DA72 /* MuseDropUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		2881820A2FF0934C008B9DE7 /* kekasatori-mcp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2881820F2FF0934C008B9DE7 /* Build configuration list for PBXNativeTarget "kekasatori-mcp" */;
+			buildPhases = (
+				288182072FF0934C008B9DE7 /* Sources */,
+				288182082FF0934C008B9DE7 /* Frameworks */,
+				288182092FF0934C008B9DE7 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				2881820C2FF0934C008B9DE7 /* kekasatori-mcp */,
+			);
+			name = "kekasatori-mcp";
+			packageProductDependencies = (
+				288182132FF093D7008B9DE7 /* MCP */,
+			);
+			productName = "kekasatori-mcp";
+			productReference = 2881820B2FF0934C008B9DE7 /* kekasatori-mcp */;
+			productType = "com.apple.product-type.tool";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -206,7 +307,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1640;
+				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					285221C82ECF287700D4DA72 = {
@@ -219,6 +320,9 @@
 					285221E22ECF287800D4DA72 = {
 						CreatedOnToolsVersion = 16.4;
 						TestTargetID = 285221C82ECF287700D4DA72;
+					};
+					2881820A2FF0934C008B9DE7 = {
+						CreatedOnToolsVersion = 26.2;
 					};
 				};
 			};
@@ -236,6 +340,7 @@
 				AABB0001CCDD0001EEFF0001 /* XCRemoteSwiftPackageReference "VecturaKit" */,
 				5A9C1E0000000000000000A1 /* XCRemoteSwiftPackageReference "Sparkle" */,
 				28910A1E2FEE7678003C2C51 /* XCRemoteSwiftPackageReference "nostr-sdk-ios" */,
+				288182062FF09308008B9DE7 /* XCRemoteSwiftPackageReference "swift-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 285221CA2ECF287700D4DA72 /* Products */;
@@ -245,6 +350,7 @@
 				285221C82ECF287700D4DA72 /* MuseDrop */,
 				285221D82ECF287800D4DA72 /* MuseDropTests */,
 				285221E22ECF287800D4DA72 /* MuseDropUITests */,
+				2881820A2FF0934C008B9DE7 /* kekasatori-mcp */,
 			);
 		};
 /* End PBXProject section */
@@ -289,7 +395,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -euo pipefail\nSRC=\"${SRCROOT}/MuseDrop/Resources/ExcalidrawHost\"\nDEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExcalidrawHost\"\nif [[ ! -f \"${SRC}/index.html\" ]]; then echo \"error: missing ${SRC}/index.html — run ./scripts/build-excalidraw-host.sh\" >&2; exit 1; fi\nrm -rf \"${DEST}\"\nmkdir -p \"${DEST}\"\nditto \"${SRC}\" \"${DEST}\"\n";
+			shellScript = "set -euo pipefail\nSRC=\"${SRCROOT}/MuseDrop/Resources/ExcalidrawHost\"\nDEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExcalidrawHost\"\nif [[ ! -f \"${SRC}/index.html\" ]]; then echo \"error: missing ${SRC}/index.html — run ./scripts/build-excalidraw-host.sh\" >&2; exit 1; fi\nrm -rf \"${DEST}\"\nmkdir -p \"${DEST}\"\nditto \"${SRC}\" \"${DEST}\"\nMSRC=\"${SRCROOT}/MonacoHost\"\nMDEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/MonacoHost\"\nif [[ -f \"${MSRC}/index.html\" ]]; then rm -rf \"${MDEST}\"; mkdir -p \"${MDEST}\"; ditto \"${MSRC}\" \"${MDEST}\"; fi\n";
 		};
 		ECA1MANIM0002SCRIPT00001 /* Copy Manim Scene */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -332,6 +438,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		288182072FF0934C008B9DE7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -344,6 +457,11 @@
 			isa = PBXTargetDependency;
 			target = 285221C82ECF287700D4DA72 /* MuseDrop */;
 			targetProxy = 285221E42ECF287800D4DA72 /* PBXContainerItemProxy */;
+		};
+		288182262FF098E8008B9DE7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2881820A2FF0934C008B9DE7 /* kekasatori-mcp */;
+			targetProxy = 288182252FF098E8008B9DE7 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -477,7 +595,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 2F5YSX6AK6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -492,7 +610,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.Kekasatori;
 				PRODUCT_NAME = Kekasatori;
 				REGISTER_APP_GROUPS = YES;
@@ -510,7 +628,7 @@
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 2F5YSX6AK6;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -525,7 +643,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.Kekasatori;
 				PRODUCT_NAME = Kekasatori;
 				REGISTER_APP_GROUPS = YES;
@@ -539,16 +657,16 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 2F5YSX6AK6;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.KekasatoriTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MuseDrop.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MuseDrop";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Kekasatori.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Kekasatori";
 			};
 			name = Debug;
 		};
@@ -557,16 +675,16 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 2F5YSX6AK6;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.KekasatoriTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MuseDrop.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MuseDrop";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Kekasatori.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Kekasatori";
 			};
 			name = Release;
 		};
@@ -574,10 +692,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 2F5YSX6AK6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.KekasatoriUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -590,15 +708,43 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 2F5YSX6AK6;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.3.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.harikanthlingutla.KekasatoriUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TEST_TARGET_NAME = MuseDrop;
+			};
+			name = Release;
+		};
+		288182102FF0934C008B9DE7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 2F5YSX6AK6;
+				ENABLE_HARDENED_RUNTIME = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		288182112FF0934C008B9DE7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 2F5YSX6AK6;
+				ENABLE_HARDENED_RUNTIME = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.5;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -641,6 +787,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		2881820F2FF0934C008B9DE7 /* Build configuration list for PBXNativeTarget "kekasatori-mcp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				288182102FF0934C008B9DE7 /* Debug */,
+				288182112FF0934C008B9DE7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -650,6 +805,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 4.5.0;
+			};
+		};
+		288182062FF09308008B9DE7 /* XCRemoteSwiftPackageReference "swift-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/modelcontextprotocol/swift-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.12.1;
 			};
 		};
 		28910A1E2FEE7678003C2C51 /* XCRemoteSwiftPackageReference "nostr-sdk-ios" */ = {
@@ -683,6 +846,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 2822139D2EE16B3100C22375 /* XCRemoteSwiftPackageReference "lottie-ios" */;
 			productName = Lottie;
+		};
+		288182132FF093D7008B9DE7 /* MCP */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 288182062FF09308008B9DE7 /* XCRemoteSwiftPackageReference "swift-sdk" */;
+			productName = MCP;
+		};
+		288182172FF095AC008B9DE7 /* MCP */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 288182062FF09308008B9DE7 /* XCRemoteSwiftPackageReference "swift-sdk" */;
+			productName = MCP;
 		};
 		5A9C1E0000000000000000B2 /* Sparkle */ = {
 			isa = XCSwiftPackageProductDependency;
