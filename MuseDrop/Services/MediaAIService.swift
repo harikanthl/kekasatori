@@ -71,7 +71,8 @@ final class MediaAIService: Sendable {
         forceRegenerate: Bool = false,
         forceRetranscribe: Bool = false,
         session: UUID,
-        onProgress: TranscriptService.ProgressHandler? = nil
+        onProgress: TranscriptService.ProgressHandler? = nil,
+        onPartial: (@Sendable (MediaAnalysis) -> Void)? = nil
     ) async throws -> MediaAnalysis {
         let store = await persistence()
         
@@ -132,7 +133,20 @@ final class MediaAIService: Sendable {
             title: item.displayTitle,
             forceRegenerate: forceRegenerate,
             session: session,
-            onProgress: onProgress
+            onProgress: onProgress,
+            onPartial: { partial in
+                onPartial?(MediaAnalysis(
+                    downloadId: item.id,
+                    mediaTitle: item.displayTitle,
+                    transcript: transcript,
+                    summary: partial.summary,
+                    notes: partial.notes,
+                    keyConcepts: partial.keyConcepts,
+                    flashcards: partial.flashcards,
+                    mindMap: partial.mindMap,
+                    engine: partial.engine
+                ))
+            }
         )
         
         try await checkGenerationState(session: session)
@@ -274,7 +288,8 @@ final class MediaAIService: Sendable {
         title: String,
         forceRegenerate: Bool,
         session: UUID?,
-        onProgress: TranscriptService.ProgressHandler? = nil
+        onProgress: TranscriptService.ProgressHandler? = nil,
+        onPartial: (@Sendable (MediaAnalysisPayload) -> Void)? = nil
     ) async throws -> MediaAnalysisPayload {
         try await checkGenerationState(session: session)
         await Task.yield()
@@ -294,7 +309,41 @@ final class MediaAIService: Sendable {
             ? await StudyResearchAgent.buildResearchContext(transcript: transcript, title: title)
             : nil
         try await checkGenerationState(session: session)
-        
+
+        // Prefer the configured BYOK cloud provider: ONE structured call instead
+        // of dozens of sequential on-device calls (seconds, not minutes). The
+        // provider picker is the choice — a cloud provider with a key generates
+        // here; "On-Device" (or no key) falls through to the on-device path below.
+        let providerSettings = LLMProviderSettings.load()
+        let hasCloudKey = providerSettings.preset.keychainAccount.map { KeychainService.has($0) } ?? false
+        if providerSettings.preset != .onDevice, hasCloudKey {
+            do {
+                onProgress?(TranscriptProgress(
+                    phase: .analyzing,
+                    detail: "Generating with \(providerSettings.preset.displayName)…"
+                ))
+                let payload = try await CloudAnalysisService.analyze(
+                    transcript: transcript,
+                    title: title,
+                    settings: providerSettings,
+                    researchContext: researchContext,
+                    onPartial: onPartial
+                )
+                try await checkGenerationState(session: session)
+                return payload
+            } catch is CancellationError {
+                throw MediaAIError.cancelled
+            } catch {
+                logService.warning(
+                    "Cloud study generation failed; using on-device/fallback. \(error.localizedDescription)"
+                )
+                onProgress?(TranscriptProgress(
+                    phase: .analyzing,
+                    detail: "Cloud provider hit an error — finishing on-device…"
+                ))
+            }
+        }
+
         #if canImport(FoundationModels)
         if #available(macOS 26.0, *) {
             if FoundationModelBridge.isAvailable {

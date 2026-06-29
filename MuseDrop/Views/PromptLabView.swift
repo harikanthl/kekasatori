@@ -395,7 +395,7 @@ private struct ModelBrowserSheet: View {
 
             if catalog.isEmpty {
                 VStack(spacing: Theme.Spacing.sm) {
-                    ProgressView()
+                    PlayfulLoader(size: 220)
                     Text("Loading the OpenRouter catalog…")
                         .font(.callout)
                         .foregroundStyle(.secondary)

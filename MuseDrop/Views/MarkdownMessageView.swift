@@ -19,15 +19,33 @@ struct MarkdownMessageView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            // Block memoization (the 2026 streaming-render standard used by
+            // ChatGPT/Claude): each block is an Equatable subview keyed by its
+            // position. As tokens stream in, blocks 0..N-1 are byte-identical, so
+            // SwiftUI skips their bodies entirely — the expensive
+            // AttributedString(markdown:) parse runs ONLY for the growing last
+            // block, not the whole message on every flush. Without `.equatable()`
+            // every block re-parsed each token, which is the sentence-by-sentence
+            // stutter on long replies.
             ForEach(blocks) { block in
-                blockView(block)
+                MarkdownBlockView(block: block).equatable()
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+}
+
+/// One rendered Markdown block. `Equatable` so SwiftUI memoizes it: an unchanged
+/// block (same position + content) skips re-rendering during streaming.
+private struct MarkdownBlockView: View, Equatable {
+    let block: MarkdownBlock
+
+    static func == (lhs: MarkdownBlockView, rhs: MarkdownBlockView) -> Bool {
+        lhs.block == rhs.block
+    }
 
     @ViewBuilder
-    private func blockView(_ block: MarkdownBlock) -> some View {
+    var body: some View {
         switch block.kind {
         case .heading(let level, let raw):
             Text(MarkdownParser.inline(raw))
@@ -118,18 +136,25 @@ struct MarkdownMessageView: View {
 
 // MARK: - Parsing
 
-private struct MarkdownBlock: Identifiable {
-    let id = UUID()
+private struct MarkdownBlock: Identifiable, Equatable {
+    /// Position in the message — stable during streaming (earlier blocks are
+    /// finalized), which gives each memoized block view a stable identity.
+    let id: Int
     let kind: Kind
 
-    enum Kind {
+    enum Kind: Equatable {
         case heading(level: Int, text: String)
         case paragraph(String)
         case bulleted([String])
-        case numbered([(number: Int, text: String)])
+        case numbered([NumberedItem])
         case code(language: String?, code: String)
         case quote(String)
         case rule
+    }
+
+    struct NumberedItem: Equatable {
+        let number: Int
+        let text: String
     }
 }
 
@@ -145,7 +170,7 @@ private enum MarkdownParser {
     }
 
     static func parse(_ text: String) -> [MarkdownBlock] {
-        var blocks: [MarkdownBlock] = []
+        var kinds: [MarkdownBlock.Kind] = []
         let lines = text.components(separatedBy: "\n")
         var i = 0
 
@@ -153,7 +178,7 @@ private enum MarkdownParser {
         func flushParagraph() {
             guard !paragraphBuffer.isEmpty else { return }
             let joined = paragraphBuffer.joined(separator: " ")
-            blocks.append(MarkdownBlock(kind: .paragraph(joined)))
+            kinds.append(.paragraph(joined))
             paragraphBuffer.removeAll()
         }
 
@@ -173,10 +198,8 @@ private enum MarkdownParser {
                     codeLines.append(lines[i])
                     i += 1
                 }
-                blocks.append(MarkdownBlock(
-                    kind: .code(language: language.isEmpty ? nil : language,
-                                code: codeLines.joined(separator: "\n"))
-                ))
+                kinds.append(.code(language: language.isEmpty ? nil : language,
+                                   code: codeLines.joined(separator: "\n")))
                 i += 1   // consume closing fence (no-op if we hit end of input)
                 continue
             }
@@ -191,7 +214,7 @@ private enum MarkdownParser {
             // Horizontal rule.
             if trimmed == "---" || trimmed == "***" || trimmed == "___" {
                 flushParagraph()
-                blocks.append(MarkdownBlock(kind: .rule))
+                kinds.append(.rule)
                 i += 1
                 continue
             }
@@ -199,7 +222,7 @@ private enum MarkdownParser {
             // ATX heading.
             if let heading = parseHeading(trimmed) {
                 flushParagraph()
-                blocks.append(MarkdownBlock(kind: .heading(level: heading.level, text: heading.text)))
+                kinds.append(.heading(level: heading.level, text: heading.text))
                 i += 1
                 continue
             }
@@ -214,21 +237,21 @@ private enum MarkdownParser {
                     items.append(next)
                     i += 1
                 }
-                blocks.append(MarkdownBlock(kind: .bulleted(items)))
+                kinds.append(.bulleted(items))
                 continue
             }
 
             // Ordered list (collect consecutive items).
             if let firstItem = parseNumbered(trimmed) {
                 flushParagraph()
-                var items = [firstItem]
+                var items = [MarkdownBlock.NumberedItem(number: firstItem.number, text: firstItem.text)]
                 i += 1
                 while i < lines.count,
                       let next = parseNumbered(lines[i].trimmingCharacters(in: .whitespaces)) {
-                    items.append(next)
+                    items.append(MarkdownBlock.NumberedItem(number: next.number, text: next.text))
                     i += 1
                 }
-                blocks.append(MarkdownBlock(kind: .numbered(items)))
+                kinds.append(.numbered(items))
                 continue
             }
 
@@ -236,7 +259,7 @@ private enum MarkdownParser {
             if trimmed.hasPrefix(">") {
                 flushParagraph()
                 let content = String(trimmed.dropFirst()).trimmingCharacters(in: .whitespaces)
-                blocks.append(MarkdownBlock(kind: .quote(content)))
+                kinds.append(.quote(content))
                 i += 1
                 continue
             }
@@ -247,7 +270,7 @@ private enum MarkdownParser {
         }
 
         flushParagraph()
-        return blocks
+        return kinds.enumerated().map { MarkdownBlock(id: $0.offset, kind: $0.element) }
     }
 
     private static func parseHeading(_ line: String) -> (level: Int, text: String)? {

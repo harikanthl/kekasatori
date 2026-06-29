@@ -63,10 +63,12 @@ struct HelpView: View {
 
     private static let tabs: [(icon: String, title: String, detail: String)] = [
         ("house", "Home", "Your starting point. Paste any link into the command bar and choose a mode: Stream, Research, or Download. Recent links sit just below."),
+        ("gauge.with.dots.needle.67percent", "Cockpit", "Your research command center. Create a Workspace — blank, from a GitHub repo, or from a paper (via Discover's “Start workspace”) — and it collects that task's runs and context (papers, research briefs) in one place. The right pane is an AI agent grounded in the workspace that can answer questions and, with your approval, switch compute or launch runs. Jump into Code or Notebox from here so runs record against the workspace."),
         ("sparkle.magnifyingglass", "Discover", "Your research cockpit. Ask a research question and the agent plans searches, queries scholarly providers (arXiv, OpenAlex, and more, which you can toggle per run), screens and ranks results, and synthesizes a cited literature review with a live progress timeline. Switch to Trending to browse papers by domain, explore areas in the Taxonomy Browser, and add open-access papers to your Library."),
         ("rectangle.split.3x1", "Compare", "A multi-model prompt arena. Add several models (cloud models via OpenRouter or local servers like Ollama and LM Studio), type one prompt, and run it across all of them at once. Responses stream into side-by-side columns, each showing elapsed time, token count, tokens/sec, and a cost estimate. Add a system prompt and save or load prompts as you go."),
         ("chart.bar.xaxis", "Run", "Benchmark a model. Pick a model (from your Compare columns or a detected local server), choose a harness (lm-eval or inspect-ai), name a task such as gsm8k, set an example limit, and run. It executes inside a container, streams the log live, and scrapes the metrics (accuracy, loss, and so on) when it finishes. See the Containers note below to set up the runtime."),
         ("chevron.left.forwardslash.chevron.right", "Code", "A code scratchpad that runs in a container. Write Python or Bash in the editor on the left and see streaming output on the right. Choose the image to run in (Python 3.12, PyTorch CPU/CUDA, Ubuntu, and others). Requires a container runtime (see the Containers note below); GPU passthrough isn't available locally on Mac."),
+        ("book.pages", "Notebox", "A reactive marimo notebook in a sandboxed container. Write Python and SQL cells (powered by DuckDB) over a bundled data stack — pandas, polars, numpy, matplotlib, pyarrow, altair — with no setup; cells re-run automatically when their inputs change. Needs a container runtime (see the Containers note); on Apple Silicon you can start and stop the Apple Container engine right from the header."),
         ("graduationcap", "Learn", "Hands-on ML challenges, LeetCode-style. Browse challenge categories, open one to read its Theory and Task, then write your implementation in the editor and run or check it. The results pane shows the container output alongside a loss-curve chart, and your progress is tracked per challenge and across the whole curriculum."),
         ("square.stack.3d.up", "Library", "Everything you've downloaded (audio and video), ready to play, study, or organize."),
         ("text.book.closed", "Study Packs", "The study materials the app generates from each session: summaries, tutor chat, mind maps, notebooks, canvas. Track mastery, pin favorites, export, or share."),
@@ -105,6 +107,27 @@ struct HelpView: View {
                     "Write Python or Bash on the left and **Run**; output streams on the right.",
                     "Requires a container runtime (Docker, Podman, or Apple Container)."
                 ])
+                HelpGuide(icon: "book.pages", title: "Open a reactive notebook (Notebox)", steps: [
+                    "Open **Notebox**. It needs a container runtime; on Apple Silicon, use **Start Engine** in the header to bring up Apple Container.",
+                    "**Start Notebox** — the first run installs marimo plus the data stack (pandas, polars, DuckDB, matplotlib, altair), so give it a minute.",
+                    "You land straight in a reactive **marimo** notebook: write Python cells, or **SQL cells** (DuckDB) to query dataframes and files.",
+                    "Use **+ New** for another notebook and the menu to switch between them; **Stop** shuts the server down."
+                ])
+                HelpGuide(icon: "gauge.with.dots.needle.67percent", title: "Organize work in a Workspace (Cockpit)", steps: [
+                    "Open **Cockpit** → **New workspace**: start blank, from a **GitHub repo**, or from a paper (Discover and the paper viewer have a **Start workspace** button).",
+                    "The middle pane gathers the workspace's **runs** and **context** (papers, research briefs) as you work.",
+                    "Use **Open in Code** / **Open in Notebox** so anything you run records against that workspace."
+                ])
+                HelpGuide(icon: "bubble.left.and.text.bubble.right", title: "Ask the in-app agent (Cockpit)", steps: [
+                    "In **Cockpit**, the right pane is an agent grounded in the selected workspace, its recent runs, and your memory.",
+                    "**Ask** it about your work, or let it **act** on the cockpit for you.",
+                    "Before anything consequential — switching compute or launching a run — it asks for your **approval** first."
+                ])
+                HelpGuide(icon: "dial.medium", title: "Run on a GPU (compute dial)", steps: [
+                    "In **Code** or **Run**, use the **compute pill** to choose where work runs: a local container or remote GPU.",
+                    "**Add endpoint…** to connect **RunPod** or **Modal**; the pill shows a live cost estimate while it runs.",
+                    "Mac containers are CPU-only, so GPU training or serving needs a remote endpoint."
+                ])
                 HelpGuide(icon: "graduationcap", title: "Practice ML (Learn)", steps: [
                     "Open **Learn** and choose a challenge category, then a challenge.",
                     "Read the **Theory** and **Task**, write your implementation, and **Run / Check**.",
@@ -134,13 +157,21 @@ struct HelpView: View {
                 ])
                 HelpGuide(icon: "sparkles", title: "Use the AI study tools", steps: [
                     "In the player or reader, open the study panel for: Tutor chat, Mind map, Notebook, Canvas, and the Pomodoro focus timer.",
-                    "Cloud tutor needs an API key in **Settings → AI Providers**.",
+                    "Cloud tutor needs an API key in **Settings → AI Providers** — pick a provider and the base URL fills in for you.",
                     "On macOS 26 with Apple Intelligence, on-device models work with no key."
+                ])
+                HelpGuide(icon: "slider.horizontal.3", title: "Add a new or custom AI model", steps: [
+                    "In **Settings → AI Providers**, pick your provider (Anthropic, OpenAI, Gemini, OpenRouter, xAI, DeepSeek, Groq, Mistral). The **Base URL** fills in automatically — leave it as is.",
+                    "Tap **Load models** to fetch that provider's current model IDs, then pick one from the menu (or type it into the Model field).",
+                    "Use **Get a key →** to open the provider's key page; paste the key and tap **Save**. Keys are stored per-provider in your Keychain.",
+                    "For a provider that isn't listed, choose **Custom (OpenAI-compatible)** and paste its **Base URL** — the part that comes *before* `/chat/completions` in the provider's API docs, usually ending in `/v1` (e.g. `https://api.example.com/v1`).",
+                    "Find the exact **Model ID** in the provider's docs or model list — it's the `model` value their API expects (e.g. `gpt-5.5`, `claude-opus-4-8`, `meta-llama/llama-4`). Tap **Load models** to list them live, or type it in.",
+                    "If a model errors: the key must match the provider you selected (an OpenRouter key won't work on OpenAI), and the Model ID must be one that provider actually serves."
                 ])
                 HelpGuide(icon: "waveform.circle", title: "Make a podcast from a paper", steps: [
                     "Open a paper in the reader, then the **More (…)** menu → **Make Podcast…**.",
                     "Pick a page range; a multi-speaker audio podcast is generated.",
-                    "Add your Google Gemini key in **Settings → AI Providers** first."
+                    "Paste your Google Gemini key in the **Make Podcast** window the first time — it's stored separately from the tutor key (the same aistudio key works for both)."
                 ])
                 HelpGuide(icon: "rectangle.3.group", title: "Track mastery", steps: [
                     "Open **Study Packs** and use the mastery board.",

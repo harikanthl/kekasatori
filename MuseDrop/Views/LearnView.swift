@@ -12,6 +12,9 @@ import SwiftUI
 import Charts
 
 struct LearnView: View {
+    /// Forwarded to the editor so its hidden web view doesn't leak the I-beam cursor
+    /// onto other tabs when Learn isn't selected (see MonacoEditorView).
+    var isActive: Bool = true
     @StateObject private var model = LearnViewModel()
     @Environment(\.colorScheme) private var colorScheme
 
@@ -340,7 +343,7 @@ struct LearnView: View {
             .padding(.horizontal, Theme.Spacing.md)
             .padding(.vertical, Theme.Spacing.xs)
 
-            MonacoEditorView(text: $model.code, language: monacoLanguage, dark: colorScheme == .dark)
+            MonacoEditorView(text: $model.code, language: monacoLanguage, dark: colorScheme == .dark, isActive: isActive)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }

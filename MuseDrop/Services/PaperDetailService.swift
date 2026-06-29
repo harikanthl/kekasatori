@@ -114,22 +114,32 @@ enum PaperDetailService {
         return URL(string: "https://huggingface.co/papers/\(PaperHit.normalizedArxivId(arxivId))")
     }
 
-    /// Best PDF link: the provider's direct PDF, else arXiv's `/pdf/` endpoint.
+    /// Best PDF link. arXiv papers always resolve to arXiv's canonical `/pdf/`
+    /// (some metadata indexes list junk mirror hosts in `pdfURL`); for everything
+    /// else we only open a provider PDF on a reputable scholarly host.
     static func pdfURL(for hit: PaperHit) -> URL? {
-        if let pdf = hit.pdfURL, let url = URL(string: pdf) { return url }
         if let arxivId = hit.arxivId, !arxivId.isEmpty {
             return URL(string: "https://arxiv.org/pdf/\(PaperHit.normalizedArxivId(arxivId))")
+        }
+        if let pdf = hit.pdfURL, PaperHit.isReputableScholarlyHost(pdf), let url = URL(string: pdf) {
+            return url
         }
         return nil
     }
 
-    /// Best abstract/landing link: the provider's URL, else arXiv's `/abs/`.
+    /// Best abstract/landing link: arXiv's `/abs/` for arXiv papers, else the
+    /// provider's URL or DOI — but only when it points at a reputable host, so a
+    /// poisoned mirror link (e.g. langtaosha.org.cn) is never opened.
     static func abstractPageURL(for hit: PaperHit) -> URL? {
-        if let url = hit.url, let parsed = URL(string: url) { return parsed }
         if let arxivId = hit.arxivId, !arxivId.isEmpty {
             return URL(string: "https://arxiv.org/abs/\(PaperHit.normalizedArxivId(arxivId))")
         }
-        if let ext = hit.externalURLString { return URL(string: ext) }
+        if let url = hit.url, PaperHit.isReputableScholarlyHost(url), let parsed = URL(string: url) {
+            return parsed
+        }
+        if let ext = hit.externalURLString, PaperHit.isReputableScholarlyHost(ext) {
+            return URL(string: ext)
+        }
         return nil
     }
 }

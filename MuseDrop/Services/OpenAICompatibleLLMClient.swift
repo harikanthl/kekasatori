@@ -16,7 +16,8 @@ struct OpenAICompatibleLLMClient: LLMClient {
     var referer: String = "https://kekasatori.app"
     var appTitle: String = "Kekasatori"
 
-    private func makeRequest(messages: [LLMMessage], model: String) throws -> URLRequest {
+    private func makeRequest(messages: [LLMMessage], model: String,
+                             responseFormat: [String: Any]? = nil) throws -> URLRequest {
         let trimmedBase = baseURL.trimmingCharacters(in: .whitespaces)
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard !trimmedBase.isEmpty, let url = URL(string: trimmedBase + "/chat/completions") else {
@@ -35,11 +36,15 @@ struct OpenAICompatibleLLMClient: LLMClient {
         request.setValue(referer, forHTTPHeaderField: "HTTP-Referer")
         request.setValue(appTitle, forHTTPHeaderField: "X-Title")
 
-        let payload: [String: Any] = [
+        var payload: [String: Any] = [
             "model": model,
             "stream": true,
             "messages": messages.map(Self.encodeMessage)
         ]
+        // Native structured output (2026 constrained-decoding standard). Honored by
+        // Gemini-compat, OpenAI, OpenRouter, etc.; providers that don't support it
+        // reply 400, and the caller retries without it (prose-JSON fallback).
+        if let responseFormat { payload["response_format"] = responseFormat }
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
         return request
     }
@@ -63,10 +68,17 @@ struct OpenAICompatibleLLMClient: LLMClient {
     }
 
     func stream(messages: [LLMMessage], model: String) -> AsyncThrowingStream<String, Error> {
+        stream(messages: messages, model: model, responseFormat: nil)
+    }
+
+    /// Streaming variant that can request native structured output. Used by the
+    /// study-pack generator; the plain `stream` above delegates here with nil.
+    func stream(messages: [LLMMessage], model: String,
+                responseFormat: [String: Any]?) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    let request = try makeRequest(messages: messages, model: model)
+                    let request = try makeRequest(messages: messages, model: model, responseFormat: responseFormat)
                     let (bytes, response) = try await URLSession.shared.bytes(for: request)
 
                     if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
@@ -95,6 +107,16 @@ struct OpenAICompatibleLLMClient: LLMClient {
             }
             continuation.onTermination = { _ in task.cancel() }
         }
+    }
+
+    /// Accumulate a full response while requesting native structured output
+    /// (`response_format: json_schema`). Returns the complete JSON text.
+    func completeJSON(messages: [LLMMessage], model: String, responseFormat: [String: Any]) async throws -> String {
+        var text = ""
+        for try await delta in stream(messages: messages, model: model, responseFormat: responseFormat) {
+            text += delta
+        }
+        return text
     }
 
     /// Extracts `choices[0].delta.content` from a streaming chunk.

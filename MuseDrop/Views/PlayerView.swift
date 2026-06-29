@@ -14,6 +14,10 @@ struct PlayerView: View {
     @StateObject private var viewModel = PlayerViewModel()
     // Wider default so the study tools (notebook, mind map) get real room.
     @AppStorage("studyPanelWidth") private var studyPanelWidth: Double = 560
+
+    // Podcast transcript (loaded from the sidecar next to the audio).
+    @State private var showTranscript = false
+    @State private var transcript: PodcastTranscript?
     
     private var isAudio: Bool {
         item.isAudioMedia
@@ -24,21 +28,25 @@ struct PlayerView: View {
     }
     
     var body: some View {
-        HStack(spacing: 0) {
-            mediaColumn
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            
-            PanelResizeHandle(panelWidth: studyPanelWidthBinding)
-            
-            StudyToolsPanel(item: item, viewModel: viewModel)
-                .frame(width: studyPanelWidthBinding.wrappedValue)
+        Group {
+            if item.isPodcast {
+                // Focused listening player — no study panel.
+                mediaColumn
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                HStack(spacing: 0) {
+                    mediaColumn
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    PanelResizeHandle(panelWidth: studyPanelWidthBinding)
+
+                    StudyToolsPanel(item: item, viewModel: viewModel)
+                        .frame(width: studyPanelWidthBinding.wrappedValue)
+                }
+            }
         }
         .background(Color(nsColor: .windowBackgroundColor))
-        .overlay(alignment: .bottomTrailing) {
-            FocusTimerWidget()
-                .padding(20)
-        }
-        .frame(minWidth: 1020, minHeight: 620)
+        .frame(minWidth: item.isPodcast ? 400 : 1020, minHeight: item.isPodcast ? 540 : 620)
         .toolbar { toolbarContent }
         .onAppear {
             viewModel.prepare(for: item)
@@ -156,51 +164,162 @@ struct PlayerView: View {
     }
     
     private var audioPlayerSection: some View {
-        VStack(spacing: 28) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color.blue.opacity(0.35),
-                                Color.purple.opacity(0.45)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 280, height: 280)
-                    .shadow(color: .black.opacity(0.15), radius: 20, y: 10)
-                
-                if let thumbnail = item.thumbnail,
-                   let image = NSImage(contentsOf: thumbnail) {
-                    Image(nsImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 280, height: 280)
-                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                } else {
-                    Image(systemName: "music.note.list")
-                        .font(.system(size: 72, weight: .light))
-                        .foregroundStyle(.white.opacity(0.85))
-                }
+        VStack(spacing: 22) {
+            if item.isPodcast, showTranscript, let transcript {
+                PodcastTranscriptView(
+                    lines: transcript.lines,
+                    currentTime: viewModel.currentTime,
+                    onSeek: { viewModel.seek(to: $0) }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(.opacity)
+            } else {
+                Spacer(minLength: 0)
+                albumArt
+                Text(item.displayTitle)
+                    .font(.title3.weight(.semibold))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .frame(maxWidth: 420)
+                Spacer(minLength: 0)
             }
-            
-            Text(item.displayTitle)
-                .font(.title3.weight(.semibold))
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .frame(maxWidth: 420)
-            
-            if let player = viewModel.player {
-                VideoPlayer(player: player)
-                    .frame(height: 72)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .frame(maxWidth: 480)
+
+            if viewModel.player != nil {
+                transportControls
+            }
+
+            if item.isPodcast, transcript != nil {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) { showTranscript.toggle() }
+                } label: {
+                    Label(showTranscript ? "Now Playing" : "Transcript",
+                          systemImage: showTranscript ? "music.note" : "text.quote")
+                        .font(.callout)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
         }
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.vertical, 12)
+        .onAppear {
+            if item.isPodcast, transcript == nil, let path = item.outputPath {
+                transcript = PodcastTranscriptStore.load(for: path)
+            }
+        }
+    }
+
+    private var albumArt: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [Color.blue.opacity(0.35), Color.purple.opacity(0.45)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .frame(width: 280, height: 280)
+                .shadow(color: .black.opacity(0.15), radius: 20, y: 10)
+
+            if let thumbnail = item.thumbnail, let image = NSImage(contentsOf: thumbnail) {
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 280, height: 280)
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            } else {
+                Image(systemName: "music.note.list")
+                    .font(.system(size: 72, weight: .light))
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+        }
+    }
+
+    // MARK: - Audio / podcast transport
+
+    private var transportControls: some View {
+        VStack(spacing: 18) {
+            // Scrubber + times
+            VStack(spacing: 4) {
+                Slider(
+                    value: Binding(
+                        get: { viewModel.currentTime },
+                        set: { viewModel.seek(to: $0) }
+                    ),
+                    in: 0...max(viewModel.duration, 0.1)
+                )
+                .tint(Theme.accent)
+                HStack {
+                    Text(Self.timeLabel(viewModel.currentTime))
+                    Spacer()
+                    Text(Self.timeLabel(viewModel.duration))
+                }
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: 420)
+
+            // Skip / play / skip
+            HStack(spacing: 30) {
+                Button { viewModel.skip(-15) } label: {
+                    Image(systemName: "gobackward.15").font(.title2)
+                }
+                .buttonStyle(.plain)
+                .help("Back 15 seconds")
+
+                Button { viewModel.togglePlayPause() } label: {
+                    Image(systemName: viewModel.isPlaying ? "pause.circle.fill"
+                          : (viewModel.didReachEnd ? "arrow.counterclockwise.circle.fill" : "play.circle.fill"))
+                        .font(.system(size: 54))
+                        .foregroundStyle(Theme.accent)
+                }
+                .buttonStyle(.plain)
+                .help(viewModel.isPlaying ? "Pause" : (viewModel.didReachEnd ? "Replay" : "Play"))
+
+                Button { viewModel.skip(15) } label: {
+                    Image(systemName: "goforward.15").font(.title2)
+                }
+                .buttonStyle(.plain)
+                .help("Forward 15 seconds")
+            }
+
+            // Speed
+            Menu {
+                ForEach([0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { rate in
+                    Button {
+                        viewModel.setPlaybackRate(rate)
+                    } label: {
+                        if viewModel.playbackRate == rate {
+                            Label(Self.rateLabel(rate), systemImage: "checkmark")
+                        } else {
+                            Text(Self.rateLabel(rate))
+                        }
+                    }
+                }
+            } label: {
+                Label(Self.rateLabel(viewModel.playbackRate), systemImage: "speedometer")
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(Color.secondary.opacity(0.15)))
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Playback speed")
+        }
+        .frame(maxWidth: 460)
+    }
+
+    private static func timeLabel(_ t: TimeInterval) -> String {
+        guard t.isFinite, t >= 0 else { return "0:00" }
+        let s = Int(t.rounded())
+        return String(format: "%d:%02d", s / 60, s % 60)
+    }
+
+    private static func rateLabel(_ r: Double) -> String {
+        r == r.rounded() ? "\(Int(r))×" : String(format: "%g×", r)
     }
     
     // MARK: - Toolbar
@@ -208,6 +327,7 @@ struct PlayerView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
+            FocusTimerWidget()
             if item.isStreamOnly {
                 Button {
                     if let url = URL(string: item.url) {

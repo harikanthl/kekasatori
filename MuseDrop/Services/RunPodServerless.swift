@@ -33,6 +33,14 @@ enum RunPodServerless {
         return "https://api.runpod.ai/v2/\(id)/openai/v1"
     }
 
+    /// Base for the serverless **jobs** API (`/run`, `/status/{id}`, `/cancel/{id}`)
+    /// — the ephemeral GPU-job tier used by the compute dial's `RunPodBackend`,
+    /// distinct from the `/openai/v1` inference base above.
+    static func jobsBaseURL(endpointID id: String) -> String? {
+        guard isValidID(id) else { return nil }
+        return "https://api.runpod.ai/v2/\(id)"
+    }
+
     /// Extract the endpoint id from user input. RunPod ids are short
     /// alphanumerics; we pull the `v2/{id}` segment when a URL is pasted,
     /// otherwise treat the trimmed token itself as the id.

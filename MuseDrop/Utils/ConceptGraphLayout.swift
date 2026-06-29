@@ -16,6 +16,10 @@ enum ConceptGraphLayout {
         var bounds: CGRect
         var displayNodes: [MindMapNode]
         var displayEdges: [MindMapEdge]
+        /// Which colour family a node belongs to. Every level-1 node starts a
+        /// branch; its whole subtree inherits the same index. Center and any
+        /// unrooted nodes are `-1` (neutral). Drives the map's colour coding.
+        var branchIndex: [String: Int] = [:]
     }
 
     /// Minimum center-to-center distance between any two nodes. Exceeds the
@@ -61,9 +65,10 @@ enum ConceptGraphLayout {
 
             let children = mindMap.children(of: node.id)
             // Far enough out that a child never overlaps its parent (half-widths
-            // of parent + child ≈ 154pt), and relaxation handles the rest.
-            let childRadius: CGFloat = 175
-            let spread = min(CGFloat.pi / 2.2, CGFloat.pi / CGFloat(max(children.count, 1)) * 1.1)
+            // of parent + child ≈ 154pt), and relaxation handles the rest. Busy
+            // branches push their children farther so the fan never crowds.
+            let childRadius: CGFloat = 175 + CGFloat(max(0, children.count - 2)) * 14
+            let spread = min(CGFloat.pi / 2.0, CGFloat.pi / CGFloat(max(children.count, 1)) * 1.15)
 
             for (childIndex, child) in children.enumerated() {
                 let offset = spread * (CGFloat(childIndex) - CGFloat(children.count - 1) / 2)
@@ -86,10 +91,17 @@ enum ConceptGraphLayout {
 
         relax(positions: &positions, pinned: centerNode.id)
 
+        let branchIndex = computeBranchIndex(
+            edges: mindMap.edges,
+            center: centerNode.id,
+            primary: primary
+        )
+
         return normalizedLayout(
             positions: positions,
             nodes: mindMap.nodes,
             edges: mindMap.edges,
+            branchIndex: branchIndex,
             padding: 110
         )
     }
@@ -100,11 +112,14 @@ enum ConceptGraphLayout {
         var edges: [MindMapEdge] = []
         var positions: [String: CGPoint] = [center.id: .zero]
 
+        var branchIndex: [String: Int] = [center.id: -1]
         let radius = ringRadius(count: concepts.count, minimum: 200)
         for (index, concept) in concepts.enumerated() {
             let node = MindMapNode(id: concept.id, label: concept.term, level: 1)
             nodes.append(node)
             edges.append(MindMapEdge(fromId: center.id, toId: node.id, relationship: concept.importance))
+            // Concepts-only maps have no sub-tree, so each term is its own family.
+            branchIndex[node.id] = index
 
             let angle = (2 * CGFloat.pi * CGFloat(index) / CGFloat(max(concepts.count, 1))) - (.pi / 2)
             positions[node.id] = CGPoint(x: radius * cos(angle), y: radius * sin(angle))
@@ -112,7 +127,40 @@ enum ConceptGraphLayout {
 
         relax(positions: &positions, pinned: center.id)
 
-        return normalizedLayout(positions: positions, nodes: nodes, edges: edges, padding: 100)
+        return normalizedLayout(
+            positions: positions,
+            nodes: nodes,
+            edges: edges,
+            branchIndex: branchIndex,
+            padding: 100
+        )
+    }
+
+    /// Assigns every node the colour-family index of the level-1 ancestor it
+    /// descends from. A node reachable from several branches keeps the first
+    /// (by primary order) that claims it; the center and unrooted nodes stay -1.
+    private static func computeBranchIndex(
+        edges: [MindMapEdge],
+        center: String,
+        primary: [MindMapNode]
+    ) -> [String: Int] {
+        var childMap: [String: [String]] = [:]
+        for edge in edges where edge.toId != center {
+            childMap[edge.fromId, default: []].append(edge.toId)
+        }
+
+        var index: [String: Int] = [center: -1]
+        for (branch, node) in primary.enumerated() {
+            var stack = [node.id]
+            while let current = stack.popLast() {
+                guard index[current] == nil else { continue }
+                index[current] = branch
+                for child in childMap[current] ?? [] where index[child] == nil {
+                    stack.append(child)
+                }
+            }
+        }
+        return index
     }
 
     /// Radius such that `count` nodes spaced `minNodeDistance` apart fit on the
@@ -131,7 +179,9 @@ enum ConceptGraphLayout {
         pinned: String,
         iterations: Int = 80
     ) {
-        let ids = Array(positions.keys)
+        // Sorted so relaxation is deterministic — dictionary key order is not
+        // stable, which would otherwise drift the layout between rebuilds.
+        let ids = positions.keys.sorted()
         guard ids.count > 1 else { return }
         let minDistance = minNodeDistance
 
@@ -177,6 +227,7 @@ enum ConceptGraphLayout {
         positions: [String: CGPoint],
         nodes: [MindMapNode],
         edges: [MindMapEdge],
+        branchIndex: [String: Int],
         padding: CGFloat
     ) -> LayoutResult {
         guard !positions.isEmpty else {
@@ -184,7 +235,8 @@ enum ConceptGraphLayout {
                 positions: [:],
                 bounds: CGRect(x: 0, y: 0, width: 400, height: 280),
                 displayNodes: nodes,
-                displayEdges: edges
+                displayEdges: edges,
+                branchIndex: branchIndex
             )
         }
 
@@ -204,7 +256,8 @@ enum ConceptGraphLayout {
             positions: shifted,
             bounds: bounds,
             displayNodes: nodes,
-            displayEdges: edges
+            displayEdges: edges,
+            branchIndex: branchIndex
         )
     }
 }

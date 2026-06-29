@@ -72,13 +72,16 @@ enum ResearchField: String, CaseIterable, Identifiable, Sendable {
 
     /// Keyword-search backends for this field's Ask/browse. Semantic Scholar &
     /// OpenAlex span all fields; arXiv covers AI/maths/physics/chem preprints;
-    /// Europe PMC is biomedical.
+    /// Europe PMC is biomedical; GitHub (code) spans every field; HuggingFace
+    /// papers are ML-centric, so AI-only.
     var providers: [ScholarlyProviderID] {
         switch self {
-        case .ai, .maths, .physics, .chemistry:
-            return [.semanticScholar, .arxiv, .openAlex]
+        case .ai:
+            return [.semanticScholar, .arxiv, .openAlex, .huggingFace, .github]
+        case .maths, .physics, .chemistry:
+            return [.semanticScholar, .arxiv, .openAlex, .github]
         case .medicine:
-            return [.semanticScholar, .openAlex, .europePmc]
+            return [.semanticScholar, .openAlex, .europePmc, .github]
         }
     }
 }

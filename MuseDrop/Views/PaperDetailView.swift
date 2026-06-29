@@ -36,6 +36,8 @@ struct PaperDetailView: View {
     @State private var loadingRelated = true
     @State private var abstractExpanded = false
     @State private var copiedCitation = false
+    @State private var codeLinks: [PwCCodeLink] = []
+    @State private var codeLoading = false
 
     private var bibtex: String { PaperDetailService.bibtex(for: hit) }
     private var showTLDR: Bool { loadingTLDR || tldr != nil }
@@ -52,6 +54,7 @@ struct PaperDetailView: View {
                     abstractSection
                     if !tasks.isEmpty { tasksSection }
                     if !methods.isEmpty { methodsSection }
+                    codeSection
                     citationSection
                     relatedSection
                 }
@@ -63,6 +66,71 @@ struct PaperDetailView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: hit.id) { await load() }
+        .task(id: hit.id) { await loadCode() }
+    }
+
+    // MARK: - Code (Papers with Code)
+
+    @ViewBuilder
+    private var codeSection: some View {
+        if codeLoading || !codeLinks.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                HStack(spacing: Theme.Spacing.sm) {
+                    Text("Code").font(.headline)
+                    if !codeLinks.isEmpty {
+                        Text("\(codeLinks.count)").font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    if codeLoading { ProgressView().controlSize(.small) }
+                    Spacer()
+                }
+
+                ForEach(codeLinks) { link in
+                    Button {
+                        if let url = URL(string: link.repoURL) { openURL(url) }
+                    } label: {
+                        HStack(spacing: Theme.Spacing.sm) {
+                            Image(systemName: "chevron.left.forwardslash.chevron.right")
+                                .foregroundStyle(.secondary)
+                            Text(link.displayName).font(.callout.weight(.medium)).lineLimit(1)
+                            if link.isOfficial {
+                                Text("official")
+                                    .font(.caption2.weight(.bold))
+                                    .padding(.horizontal, 6).padding(.vertical, 2)
+                                    .background(Capsule().fill(Theme.accent.opacity(0.15)))
+                                    .foregroundStyle(Theme.accent)
+                            }
+                            if let fw = link.frameworkLabel {
+                                Text(fw)
+                                    .font(.caption2)
+                                    .padding(.horizontal, 6).padding(.vertical, 2)
+                                    .background(Capsule().fill(Color.secondary.opacity(0.12)))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "arrow.up.right").font(.caption2).foregroundStyle(.tertiary)
+                        }
+                        .padding(.vertical, 7).padding(.horizontal, Theme.Spacing.md)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .background(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                        .fill(Color.secondary.opacity(0.06)))
+                }
+
+                if !codeLinks.isEmpty {
+                    Text("Code links via Papers with Code (CC-BY-SA).")
+                        .font(.caption2).foregroundStyle(.tertiary)
+                }
+            }
+        }
+    }
+
+    private func loadCode() async {
+        guard let arxiv = hit.arxivId, !arxiv.isEmpty else { codeLinks = []; return }
+        codeLoading = true
+        let links = await PwCIndexService.shared.codeLinks(arxivId: arxiv)
+        codeLinks = links
+        codeLoading = false
     }
 
     // MARK: - Top bar
@@ -156,6 +224,10 @@ struct PaperDetailView: View {
 
     private var actionBar: some View {
         ChipFlow(spacing: Theme.Spacing.sm) {
+            // Finished reading? Jump straight into a cockpit workspace for it.
+            actionButton("Start in Cockpit", "gauge.with.dots.needle.67percent", tint: Theme.accent) {
+                CockpitLauncher.newWorkspace(from: hit)
+            }
             if let pdf = PaperDetailService.pdfURL(for: hit) {
                 actionButton("View PDF", "doc.richtext", tint: Theme.accent) { openURL(pdf) }
             }

@@ -68,14 +68,14 @@ enum ChallengeStore {
         "4 · Transformers",
         "5 · Build a GPT",
         "6 · Modern LLMs"
-    ] + dataModules
+    ] + dataModules + rlModules
 
     private static let torchImage = "pytorch/pytorch:2.5.1-cpu"
     private static let shellImage = "ubuntu:24.04"
 
-    static let all: [Challenge] = (terminal + shellML + foundations + autograd + optimization + transformers + buildGPT + modernLLMs + dataCleaning).map {
+    static let all: [Challenge] = (terminal + shellML + foundations + autograd + optimization + transformers + buildGPT + modernLLMs + dataCleaning + rl).map {
         var challenge = $0
-        challenge.theory = theoryByID[$0.id] ?? dataTheory[$0.id] ?? ""
+        challenge.theory = theoryByID[$0.id] ?? dataTheory[$0.id] ?? rlTheory[$0.id] ?? ""
         return challenge
     }
 
@@ -130,6 +130,10 @@ enum ChallengeStore {
             id: "modern-llms", name: "Modern LLMs",
             subtitle: "What today's models actually run — RoPE, RMSNorm, SwiGLU, GQA, KV cache — assembled into a Llama block.",
             symbol: "cpu", modules: ["6 · Modern LLMs"]),
+        LearnCategory(
+            id: "reinforcement-learning", name: "Reinforcement learning",
+            subtitle: "From bandits to PPO and SAC — implement every core RL update by hand, following the RL Handbook.",
+            symbol: "gamecontroller", modules: rlModules),
         LearnCategory(
             id: "papers", name: "Papers",
             subtitle: "Reproduce results from landmark papers. (Coming soon.)",

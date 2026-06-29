@@ -11,6 +11,9 @@
 import SwiftUI
 
 struct CodeBoxView: View {
+    /// Whether the Code tab is selected; forwarded to the editor so its hidden web
+    /// view doesn't leak the I-beam cursor onto other tabs (see MonacoEditorView).
+    var isActive: Bool = true
     @StateObject private var model = CodeBoxViewModel()
     @Environment(\.colorScheme) private var colorScheme
 
@@ -57,6 +60,14 @@ struct CodeBoxView: View {
             }
         }
         .onChange(of: model.spec.language) { _, _ in model.loadStarterIfEmpty() }
+        .confirmationDialog("Run on a paid GPU?", isPresented: $model.pendingPaidConfirm, titleVisibility: .visible) {
+            Button("Run on \(model.computeTargets.selected?.name ?? "GPU")") { model.confirmPaidRun() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            if let rate = ComputeCost.ratePerHour(model.computeTargets.selected?.capabilities.costPerHourUSD) {
+                Text("This starts a paid GPU run (\(rate)). The cost meter runs live — Stop anytime.")
+            }
+        }
     }
 
     // MARK: - Header controls
@@ -111,15 +122,16 @@ struct CodeBoxView: View {
             .padding(.vertical, Theme.Spacing.sm)
             .floatingChrome(radius: Theme.Radius.md)
 
-            if let runtime = model.runtime, let engine = runtime.engine {
-                StatusPill(text: engine.displayName, systemImage: "cube.box", color: Theme.success)
-                if model.canStartEngine {
-                    Button("Start engine") { model.startEngine() }
-                        .controlSize(.small)
-                        .help("Run `container system start`")
-                }
+            if model.canStartEngine {
+                Button("Start engine") { model.startEngine() }
+                    .controlSize(.small)
+                    .help("Run `container system start`")
             }
+
             Spacer(minLength: 0)
+
+            // The compute dial — vintage wooden gauge: switch local ↔ GPU, live cost.
+            ComputePill(store: model.computeTargets, accruedCostUSD: model.accruedCostUSD)
         }
     }
 
@@ -171,7 +183,8 @@ struct CodeBoxView: View {
             MonacoEditorView(
                 text: $model.spec.code,
                 language: monacoLanguage,
-                dark: colorScheme == .dark
+                dark: colorScheme == .dark,
+                isActive: isActive
             )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

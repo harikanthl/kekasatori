@@ -38,7 +38,12 @@ class SettingsViewModel: ObservableObject {
     @Published var llmAPIKeyInput: String = ""
     @Published var llmHasKey: Bool = false
     @Published var llmStatusMessage: String = ""
-    
+    /// Live model IDs fetched from the active provider's `/models` (empty until
+    /// "Load models" is tapped); merged with the provider's curated suggestions.
+    @Published var llmLoadedModels: [String] = []
+    @Published var llmLoadingModels: Bool = false
+    @Published var llmModelsError: String?
+
     enum AudioFormat: String, CaseIterable {
         case mp3 = "MP3"
         case aac = "AAC"
@@ -92,7 +97,7 @@ class SettingsViewModel: ObservableObject {
         llmPreferOnDevice = llm.preferOnDevice
         llmEnableRAG = llm.enableRAG
         llmAnalyzeFigures = llm.analyzeFigures
-        llmHasKey = KeychainService.has(KeychainService.Account.llmChat)
+        llmHasKey = llmPreset.keychainAccount.map { KeychainService.has($0) } ?? false
         refreshLLMStatus()
     }
 
@@ -111,19 +116,52 @@ class SettingsViewModel: ObservableObject {
 
     func saveLLMSettings() {
         currentLLMSettings.save()
-        if !llmAPIKeyInput.trimmingCharacters(in: .whitespaces).isEmpty {
-            KeychainService.set(llmAPIKeyInput.trimmingCharacters(in: .whitespaces),
-                                for: KeychainService.Account.llmChat)
+        let account = llmPreset.keychainAccount
+        if let account, !llmAPIKeyInput.trimmingCharacters(in: .whitespaces).isEmpty {
+            KeychainService.set(llmAPIKeyInput.trimmingCharacters(in: .whitespaces), for: account)
             llmAPIKeyInput = ""
         }
-        llmHasKey = KeychainService.has(KeychainService.Account.llmChat)
+        llmHasKey = account.map { KeychainService.has($0) } ?? false
         refreshLLMStatus()
     }
 
     func clearLLMKey() {
-        KeychainService.delete(KeychainService.Account.llmChat)
+        if let account = llmPreset.keychainAccount { KeychainService.delete(account) }
         llmHasKey = false
         refreshLLMStatus()
+    }
+
+    /// Called when the provider changes: auto-fill the base URL, pick a sensible
+    /// default model, refresh whether *that* provider already has a stored key,
+    /// and drop any previously loaded model list.
+    func onLLMProviderChanged() {
+        if llmPreset != .custom, let base = llmPreset.defaultBaseURL {
+            llmBaseURL = base
+        }
+        if llmModelId.isEmpty || !llmPreset.modelSuggestions.contains(where: { $0.id == llmModelId }) {
+            if !llmPreset.defaultModelId.isEmpty { llmModelId = llmPreset.defaultModelId }
+        }
+        llmHasKey = llmPreset.keychainAccount.map { KeychainService.has($0) } ?? false
+        llmLoadedModels = []
+        llmModelsError = nil
+        llmAPIKeyInput = ""
+        saveLLMSettings()
+    }
+
+    /// Fetch the provider's live model catalog via `GET {baseURL}/models`.
+    func loadLLMModels() async {
+        guard llmPreset.supportsModelListing else { return }
+        llmLoadingModels = true
+        llmModelsError = nil
+        let key = llmPreset.keychainAccount.flatMap { KeychainService.get($0) }
+        do {
+            let ids = try await ModelCatalogService.listModelIDs(for: llmPreset, baseURL: llmBaseURL, apiKey: key)
+            llmLoadedModels = ids
+            if llmModelId.isEmpty, let first = ids.first { llmModelId = first; saveLLMSettings() }
+        } catch {
+            llmModelsError = error.localizedDescription
+        }
+        llmLoadingModels = false
     }
 
     func refreshLLMStatus() {

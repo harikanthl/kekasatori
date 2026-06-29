@@ -118,6 +118,24 @@ enum ContainerRuntime {
         }
     }
 
+    /// Stop the Apple Container system service (`container system stop`).
+    /// No-op for Docker/Colima which manage their own daemon.
+    static func stopSystemService(_ status: ContainerRuntimeStatus) async -> (ok: Bool, message: String) {
+        guard status.engine == .appleContainer, let executable = status.executable else {
+            return (true, "")
+        }
+        let runner = ProcessRunner()
+        do {
+            let result = try await runner.run(executable: executable, arguments: ["system", "stop"], timeout: 60)
+            if result.exitCode == 0 {
+                return (true, "Apple Container stopped.")
+            }
+            return (false, result.stderr.trimmingCharacters(in: .whitespacesAndNewlines))
+        } catch {
+            return (false, error.localizedDescription)
+        }
+    }
+
     private static func which(_ command: String) async -> URL? {
         let runner = ProcessRunner()
         do {

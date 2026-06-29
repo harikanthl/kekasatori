@@ -36,6 +36,9 @@ struct StudyToolsPanel: View {
             translationBar
 
             tabBody
+                .overlay {
+                    if viewModel.isGeneratingAI { generationLoader }
+                }
         }
         .studyTranslationHost(viewModel.translationCoordinator)
         .background(Color(nsColor: .windowBackgroundColor))
@@ -166,17 +169,39 @@ struct StudyToolsPanel: View {
             VStack(alignment: .leading, spacing: 6) {
                 ProgressView()
                     .progressViewStyle(.linear)
-                
-                Text(viewModel.aiProgressDetail ?? "Transcribing and analyzing…")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+
+                // Playful rotating status keeps the longer wait alive…
+                RetroThinkingTicker(messages: ThinkingLines.generating)
+
+                // …with the honest provider detail underneath (e.g. the model).
+                if let detail = viewModel.aiProgressDetail {
+                    Text(detail)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
             }
             .padding(.horizontal, StudyPanelDesign.contentPadding)
             .padding(.bottom, 10)
         }
     }
-    
+
+    /// A playful critter centered in the right pane while a study pack generates — the
+    /// 120s+ wait stays lively. Lives in the main content area (with room), not a cramped
+    /// footer that clipped the animation.
+    private var generationLoader: some View {
+        VStack(spacing: 10) {
+            PlayfulLoader(size: 180)
+            Text("Crafting your study pack…\nThis can take a couple of minutes. ☕️")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.ultraThinMaterial)
+        .allowsHitTesting(false)
+    }
+
     /// Drives the retro status bar inside the translation area.
     private var translationStatus: RetroStatus? {
         if viewModel.isTranslating {

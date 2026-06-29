@@ -180,6 +180,44 @@ class HomeViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Playlist import
+
+    /// Drives the playlist import sheet (`.sheet(item:)`).
+    struct PlaylistImportRequest: Identifiable {
+        let id = UUID()
+        let url: String
+        let kind: StreamMediaKind
+    }
+    @Published var playlistToImport: PlaylistImportRequest?
+    /// Drives the "this link is part of a playlist" choice dialog.
+    @Published var showPlaylistChoice = false
+    private var pendingStreamKind: StreamMediaKind = .video
+
+    /// If the current URL is (part of) a real YouTube playlist, route to playlist
+    /// handling and return true. A bare `/playlist?list=` imports directly; a
+    /// `watch?v=…&list=…` asks whether to import the one video or the whole list.
+    func routeToPlaylistIfNeeded(kind: StreamMediaKind) -> Bool {
+        pendingStreamKind = kind
+        guard let listID = MediaSourceIdentity.youtubePlaylistID(from: urlInput) else { return false }
+        if MediaSourceIdentity.youtubeVideoID(from: urlInput) != nil {
+            showPlaylistChoice = true            // ambiguous watch + list
+        } else {
+            playlistToImport = .init(url: MediaSourceIdentity.playlistURL(forID: listID), kind: kind)
+        }
+        return true
+    }
+
+    /// "Import whole playlist" from the choice dialog.
+    func confirmImportWholePlaylist() {
+        guard let listID = MediaSourceIdentity.youtubePlaylistID(from: urlInput) else { return }
+        playlistToImport = .init(url: MediaSourceIdentity.playlistURL(forID: listID), kind: pendingStreamKind)
+    }
+
+    /// "Just this video" from the choice dialog.
+    func importThisVideoOnly() {
+        Task { await streamAndStudy(kind: pendingStreamKind) }
+    }
+
     func streamAndStudy(kind: StreamMediaKind) async {
         guard isValidURL else {
             errorMessage = "Please enter a valid URL"

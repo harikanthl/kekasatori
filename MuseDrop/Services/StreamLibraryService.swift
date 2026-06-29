@@ -29,17 +29,22 @@ final class StreamLibraryService {
     
     private init() {}
     
-    func addStreamItem(url: String, kind: StreamMediaKind) async throws -> DownloadItem {
+    func addStreamItem(
+        url: String,
+        kind: StreamMediaKind,
+        playlistId: UUID? = nil,
+        playlistTitle: String? = nil
+    ) async throws -> DownloadItem {
         guard URL(string: url) != nil else {
             throw StreamLibraryError.invalidURL
         }
-        
+
         logService.info("Adding stream item (\(kind.rawValue)): \(url)")
-        
+
         let metadata = try await resolver.fetchMetadata(for: url)
         let itemId = UUID()
         let thumbnail = await resolver.downloadThumbnail(metadata, itemId: itemId)
-        
+
         // Defer playback URL resolution until player opens (reduces rate limiting).
         let item = DownloadItem(
             id: itemId,
@@ -55,7 +60,9 @@ final class StreamLibraryService {
             streamURL: nil,
             streamExpiresAt: nil,
             streamMediaKind: kind,
-            durationSeconds: metadata.durationSeconds > 0 ? metadata.durationSeconds : nil
+            durationSeconds: metadata.durationSeconds > 0 ? metadata.durationSeconds : nil,
+            playlistId: playlistId,
+            playlistTitle: playlistTitle
         )
         
         libraryManager.addDownload(item)

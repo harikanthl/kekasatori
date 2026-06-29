@@ -53,7 +53,7 @@ actor LLMRouter {
         switch settings.preset {
         case .onDevice:
             return isOnDeviceAvailable ? .onDevice : .unavailable
-        case .openRouter, .huggingFace, .runPod, .custom:
+        case .anthropic, .openAI, .gemini, .openRouter, .xai, .deepSeek, .groq, .mistral, .huggingFace, .runPod, .custom:
             if settings.preferOnDevice, isOnDeviceAvailable { return .onDevice }
             if hasKey(for: settings) { return .cloud(model: settings.modelId) }
             if isOnDeviceAvailable { return .onDevice }   // graceful fallback
@@ -65,7 +65,7 @@ actor LLMRouter {
     /// and the configured model is vision-capable. (On-device can't see images.)
     nonisolated func canAnalyzeFigures(settings: LLMProviderSettings) -> Bool {
         settings.analyzeFigures
-            && hasCloudKey
+            && hasKey(for: settings)
             && LLMModelCapabilities.supportsVision(settings.modelId)
     }
 
@@ -73,11 +73,13 @@ actor LLMRouter {
     /// figure analysis, which the on-device model cannot perform). Throws if no
     /// cloud key is configured.
     func cloudComplete(messages: [LLMMessage], settings: LLMProviderSettings) async throws -> String {
-        guard hasCloudKey else { throw LLMError.missingAPIKey }
-        let client = OpenAICompatibleLLMClient(
-            baseURL: settings.effectiveBaseURL,
-            apiKey: KeychainService.get(KeychainService.Account.llmChat)
-        )
+        // Read the ACTIVE provider's key (not a hardcoded slot) so Gemini/OpenAI/
+        // etc. work, and fetch it once for this call.
+        guard let account = settings.preset.keychainAccount,
+              let key = KeychainService.get(account), !key.isEmpty else {
+            throw LLMError.missingAPIKey
+        }
+        let client = OpenAICompatibleLLMClient(baseURL: settings.effectiveBaseURL, apiKey: key)
         return try await client.complete(messages: messages, model: settings.modelId)
     }
 

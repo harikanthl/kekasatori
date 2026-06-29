@@ -25,7 +25,11 @@ struct DownloadItem: Identifiable, Codable {
     var streamExpiresAt: Date?
     var streamMediaKind: StreamMediaKind?
     var durationSeconds: Double?
-    
+
+    /// Playlist collection this item was imported as part of (nil for singles).
+    var playlistId: UUID?
+    var playlistTitle: String?
+
     init(
         id: UUID = UUID(),
         url: String,
@@ -42,7 +46,9 @@ struct DownloadItem: Identifiable, Codable {
         streamURL: URL? = nil,
         streamExpiresAt: Date? = nil,
         streamMediaKind: StreamMediaKind? = nil,
-        durationSeconds: Double? = nil
+        durationSeconds: Double? = nil,
+        playlistId: UUID? = nil,
+        playlistTitle: String? = nil
     ) {
         self.id = id
         self.url = url
@@ -60,6 +66,8 @@ struct DownloadItem: Identifiable, Codable {
         self.streamExpiresAt = streamExpiresAt
         self.streamMediaKind = streamMediaKind
         self.durationSeconds = durationSeconds
+        self.playlistId = playlistId
+        self.playlistTitle = playlistTitle
     }
 }
 
@@ -103,6 +111,11 @@ extension DownloadItem {
         }
         let ext = outputPath?.pathExtension.lowercased() ?? ""
         return ["mp3", "m4a", "aac", "wav", "flac", "ogg"].contains(ext)
+    }
+
+    /// A generated two-host podcast (gets a compact, focused player window).
+    var isPodcast: Bool {
+        format.caseInsensitiveCompare("Podcast") == .orderedSame || url.hasPrefix("podcast://")
     }
     
     var streamURLIsExpired: Bool {

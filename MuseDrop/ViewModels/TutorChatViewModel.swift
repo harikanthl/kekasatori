@@ -131,9 +131,16 @@ final class TutorChatViewModel: ObservableObject {
                 )
                 let stream = await LLMRouter.shared.stream(messages: llmMessages, settings: settings)
                 var accumulated = ""
+                var lastFlush = Date.distantPast
                 for try await delta in stream {
                     accumulated += delta
-                    await MainActor.run { self.updateAssistant(id: assistant.id, content: accumulated) }
+                    // Coalesce bursts of tokens into ~20 UI updates/sec so the
+                    // main thread isn't re-rendered per tiny token (smoother).
+                    if Date().timeIntervalSince(lastFlush) >= 0.05 {
+                        lastFlush = Date()
+                        let snapshot = accumulated
+                        await MainActor.run { self.updateAssistant(id: assistant.id, content: snapshot) }
+                    }
                 }
                 await MainActor.run {
                     self.finalizeAssistant(id: assistant.id, content: accumulated)

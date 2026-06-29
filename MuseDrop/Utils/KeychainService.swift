@@ -82,6 +82,10 @@ enum KeychainService {
         /// RunPod API key — the Serverless OpenAI-compatible endpoints (Compare /
         /// Run) and, later, raw GPU provisioning (Phase 3b) share this one key.
         static let runPod = "runpod.apiKey"
+        /// Modal proxy token pair (`Modal-Key` / `Modal-Secret`) for the compute
+        /// dial's Modal GPU backend (a deployed Modal web endpoint).
+        static let modalKey = "modal.key"
+        static let modalSecret = "modal.secret"
         /// Kaggle API credentials (from kaggle.json) — injected as
         /// KAGGLE_USERNAME / KAGGLE_KEY into Learn data lessons that pull a real
         /// Kaggle dataset.
@@ -89,8 +93,22 @@ enum KeychainService {
         static let kaggleKey = "kaggle.apiKey"
         /// Optional separate embeddings key (e.g. OpenAI text-embedding) for cloud RAG.
         static let embeddings = "llm.embeddings.apiKey"
-        /// Google Gemini key for the podcast generator (script + multi-speaker TTS).
+        /// Google Gemini key (aistudio) — shared by the podcast generator and the
+        /// Gemini tutor/Compare provider (the same key works for both surfaces).
         static let gemini = "gemini.apiKey"
+        /// Per-provider BYOK keys for the first-class OpenAI-compatible providers,
+        /// so a user can store several and switch without re-entering. OpenRouter
+        /// and Custom continue to share `llmChat`.
+        static let anthropic = "anthropic.apiKey"
+        static let openai = "openai.apiKey"
+        static let xai = "xai.apiKey"
+        static let deepseek = "deepseek.apiKey"
+        static let groq = "groq.apiKey"
+        static let mistral = "mistral.apiKey"
+        /// Optional GitHub personal-access token — lifts the repo-search rate
+        /// limit for the Discover GitHub source (10→30 req/min). Read-only; only
+        /// public search is used, so no scopes are required.
+        static let githubToken = "github.apiKey"
         /// Secret key for the user's community (Nostr) identity. Placeholder
         /// until the real Nostr signer lands — kept here so it never touches
         /// UserDefaults, SwiftData, or logs.

@@ -65,12 +65,17 @@ final class GeminiPodcastService {
         let script = try await generateScript(from: source, topic: title, apiKey: key)
 
         progress("Recording the voices…")
-        let pcm = try await synthesize(script: script, apiKey: key)
+        let segments = try await synthesizeSegments(script: script, apiKey: key)
+        let pcm = segments.reduce(into: Data()) { $0.append($1.pcm) }
+        guard !pcm.isEmpty else { throw PodcastError.noAudio }
 
         progress("Finishing up…")
         let wav = Self.wav(fromPCM: pcm, sampleRate: 24_000, channels: 1, bitsPerSample: 16)
         let url = try save(wav, title: title)
         let duration = Double(pcm.count) / Double(24_000 * 2)   // bytes / (rate * bytesPerSample)
+
+        // Persist a timed transcript sidecar for the player's transcript view.
+        PodcastTranscriptStore.save(Self.buildTranscript(from: segments), for: url)
         return (url, duration)
     }
 
@@ -91,12 +96,94 @@ final class GeminiPodcastService {
         \(text)
         """
         let body: [String: Any] = ["contents": [["parts": [["text": prompt]]]]]
-        let json = try await post(model: scriptModel, body: body, apiKey: apiKey)
+        let json = try await Self.post(model: scriptModel, body: body, apiKey: apiKey)
         guard let script = Self.firstText(in: json), !script.isEmpty else { throw PodcastError.noScript }
         return script
     }
 
-    private func synthesize(script: String, apiKey: String) async throws -> Data {
+    /// Synthesize the whole dialogue. A single TTS call scales with audio length
+    /// (a 2–4 min script ≈ 2 minutes of latency), so we split the script into a
+    /// few segments along speaker turns and synthesize them concurrently, then
+    /// concatenate the PCM in order. Wall-clock drops to ~the slowest segment.
+    /// Returns each segment's source text + synthesized PCM, in order. The
+    /// caller concatenates the PCM for the WAV and uses each segment's audio
+    /// length to time the transcript.
+    private func synthesizeSegments(script: String, apiKey: String) async throws -> [(text: String, pcm: Data)] {
+        let chunks = Self.splitIntoChunks(script)
+        if chunks.count <= 1 {
+            let text = chunks.first ?? script
+            let pcm = try await Self.synthesizeChunk(
+                text, apiKey: apiKey,
+                model: ttsModel, hostA: hostA, hostB: hostB, voiceA: voiceA, voiceB: voiceB
+            )
+            return [(text, pcm)]
+        }
+
+        let model = ttsModel, a = hostA, b = hostB, va = voiceA, vb = voiceB
+        let maxConcurrent = 4   // chunks are capped at ~4, so this is one full wave
+        var results = [Data](repeating: Data(), count: chunks.count)
+
+        try await withThrowingTaskGroup(of: (Int, Data).self) { group in
+            var next = 0
+            func schedule() {
+                guard next < chunks.count else { return }
+                let idx = next, text = chunks[idx]
+                group.addTask {
+                    (idx, try await Self.synthesizeChunk(text, apiKey: apiKey,
+                        model: model, hostA: a, hostB: b, voiceA: va, voiceB: vb))
+                }
+                next += 1
+            }
+            for _ in 0..<min(maxConcurrent, chunks.count) { schedule() }
+            for try await (idx, data) in group {
+                results[idx] = data
+                schedule()
+            }
+        }
+
+        return Array(zip(chunks, results)).map { (text: $0.0, pcm: $0.1) }
+    }
+
+    // MARK: - Transcript timing
+
+    /// Build a timed transcript: each segment's audio duration is split across
+    /// its speaker turns in proportion to character count (an approximation —
+    /// per-turn timestamps aren't returned by the TTS API), accumulating a start
+    /// time per line.
+    private static func buildTranscript(from segments: [(text: String, pcm: Data)]) -> PodcastTranscript {
+        var lines: [PodcastTranscriptLine] = []
+        var cursor = 0.0
+        for seg in segments {
+            let segDuration = Double(seg.pcm.count) / Double(24_000 * 2)
+            let turns = parseTurns(seg.text)
+            let totalChars = max(1, turns.reduce(0) { $0 + $1.text.count })
+            for turn in turns {
+                lines.append(PodcastTranscriptLine(speaker: turn.speaker, text: turn.text, start: cursor))
+                cursor += segDuration * (Double(turn.text.count) / Double(totalChars))
+            }
+        }
+        return PodcastTranscript(lines: lines)
+    }
+
+    /// Parse "Name: line" dialogue into (speaker, text) turns.
+    private static func parseTurns(_ text: String) -> [(speaker: String, text: String)] {
+        text.split(separator: "\n", omittingEmptySubsequences: true).compactMap { raw in
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            guard !line.isEmpty else { return nil }
+            guard let colon = line.firstIndex(of: ":") else { return ("", line) }
+            let speaker = String(line[..<colon]).trimmingCharacters(in: .whitespaces)
+            let body = String(line[line.index(after: colon)...]).trimmingCharacters(in: .whitespaces)
+            guard !body.isEmpty, speaker.count < 24 else { return body.isEmpty ? nil : ("", line) }
+            return (speaker, body)
+        }
+    }
+
+    /// One TTS call for a slice of the dialogue. Static so it's safely callable
+    /// from concurrent tasks without capturing `self`.
+    private static func synthesizeChunk(
+        _ script: String, apiKey: String, model: String,
+        hostA: String, hostB: String, voiceA: String, voiceB: String
+    ) async throws -> Data {
         let body: [String: Any] = [
             "contents": [["parts": [["text": script]]]],
             "generationConfig": [
@@ -111,16 +198,45 @@ final class GeminiPodcastService {
                 ]
             ]
         ]
-        let json = try await post(model: ttsModel, body: body, apiKey: apiKey)
-        guard let b64 = Self.firstInlineAudio(in: json), let pcm = Data(base64Encoded: b64), !pcm.isEmpty else {
-            throw PodcastError.noAudio
+        // Retry transient rate-limit / overload so one blip doesn't fail the whole
+        // podcast when several segments synthesize at once on a free-tier key.
+        var attempt = 0
+        while true {
+            do {
+                let json = try await post(model: model, body: body, apiKey: apiKey)
+                guard let b64 = firstInlineAudio(in: json),
+                      let pcm = Data(base64Encoded: b64), !pcm.isEmpty else {
+                    throw PodcastError.noAudio
+                }
+                return pcm
+            } catch let PodcastError.http(code, _) where (code == 429 || code == 503) && attempt < 2 {
+                attempt += 1
+                try await Task.sleep(nanoseconds: UInt64(attempt) * 1_500_000_000)
+            }
         }
-        return pcm
+    }
+
+    /// Split a "Name: line" script into ~`targetChunks` segments along whole
+    /// speaker turns (never mid-turn). Short scripts stay a single chunk.
+    private static func splitIntoChunks(_ script: String, targetChunks: Int = 4) -> [String] {
+        let turns = script
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .map(String.init)
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        guard turns.count > targetChunks * 2 else { return [script] }
+        let perChunk = Int(ceil(Double(turns.count) / Double(targetChunks)))
+        var chunks: [String] = []
+        var i = 0
+        while i < turns.count {
+            chunks.append(turns[i..<min(i + perChunk, turns.count)].joined(separator: "\n"))
+            i += perChunk
+        }
+        return chunks
     }
 
     // MARK: - Networking
 
-    private func post(model: String, body: [String: Any], apiKey: String) async throws -> [String: Any] {
+    private static func post(model: String, body: [String: Any], apiKey: String) async throws -> [String: Any] {
         let url = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/\(model):generateContent")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"

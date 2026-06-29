@@ -39,24 +39,26 @@ struct TutorChatView: View {
 
     private var header: some View {
         HStack(spacing: Theme.Spacing.sm) {
+            // Logo tile
             Image(systemName: "bubble.left.and.bubble.right.fill")
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Theme.accent)
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Tutor")
-                    .font(.subheadline.weight(.semibold))
-                HStack(spacing: 4) {
-                    modelMenu
-                    if viewModel.isPreparing {
-                        Text("· indexing…")
-                    } else if viewModel.hasContext {
-                        Text("· grounded in this \(item.isResearchDocument ? "paper" : "transcript")")
-                    }
-                }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
+                .frame(width: 30, height: 30)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Theme.accent.opacity(0.12))
+                )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Tutor").font(.subheadline.weight(.semibold))
+                groundingBadge
             }
-            Spacer()
+
+            Spacer(minLength: Theme.Spacing.sm)
+
+            // Model selector as a distinct chip on the right.
+            modelMenu
+
             if !viewModel.messages.isEmpty {
                 Button {
                     viewModel.clearConversation()
@@ -69,6 +71,23 @@ struct TutorChatView: View {
         }
         .padding(.horizontal, Theme.Spacing.md)
         .padding(.vertical, Theme.Spacing.sm)
+    }
+
+    /// Small status pill under the title: indexing, grounded, or nothing.
+    @ViewBuilder
+    private var groundingBadge: some View {
+        if viewModel.isPreparing {
+            Label("Indexing…", systemImage: "hourglass")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        } else if viewModel.hasContext {
+            Label("Grounded in this \(item.isResearchDocument ? "paper" : "transcript")",
+                  systemImage: "checkmark.seal.fill")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
     }
 
     private var modelMenu: some View {
@@ -98,12 +117,15 @@ struct TutorChatView: View {
 
             if viewModel.needsKey {
                 Section {
-                    Text("Add an OpenRouter API key in Settings → AI Providers to use cloud models.")
+                    Text("Add an API key in Settings → AI Providers to use cloud models.")
                 }
             }
         } label: {
-            HStack(spacing: 3) {
+            HStack(spacing: 4) {
+                Image(systemName: viewModel.isOnDeviceSelected ? "cpu" : "cloud")
+                    .font(.system(size: 9, weight: .semibold))
                 Text(viewModel.activeRouteLabel)
+                    .lineLimit(1)
                 if viewModel.needsKey {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(.orange)
@@ -111,6 +133,10 @@ struct TutorChatView: View {
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 7, weight: .semibold))
             }
+            .font(.caption2.weight(.medium))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(Color.secondary.opacity(0.12)))
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
@@ -134,10 +160,10 @@ struct TutorChatView: View {
                 .padding(Theme.Spacing.md)
             }
             .onChange(of: viewModel.messages.last?.content) { _, _ in
+                // Non-animated follow during streaming — a per-token animation
+                // fights the text growth and reads as jumpy.
                 if let last = viewModel.messages.last {
-                    withAnimation(.easeOut(duration: 0.15)) {
-                        proxy.scrollTo(last.id, anchor: .bottom)
-                    }
+                    proxy.scrollTo(last.id, anchor: .bottom)
                 }
             }
         }
@@ -192,36 +218,32 @@ struct TutorChatView: View {
         HStack(alignment: .bottom, spacing: Theme.Spacing.sm) {
             TextField("Ask about this \(item.isResearchDocument ? "paper" : "lecture")…", text: $viewModel.input, axis: .vertical)
                 .textFieldStyle(.plain)
-                .lineLimit(1...5)
+                .font(.callout)                      // match the reply text
+                .lineLimit(1...6)
                 .padding(.horizontal, Theme.Spacing.md)
-                .padding(.vertical, Theme.Spacing.sm)
-                .background(Theme.fieldFill, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+                .padding(.vertical, 10)
+                .frame(minHeight: 38)                // comfortable, not a thin line
+                .background(Theme.fieldFill, in: RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                    RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
                         .strokeBorder(.separator.opacity(0.6))
                 )
                 .onSubmit { viewModel.send() }
                 .disabled(!viewModel.providerConfigured)
 
-            if viewModel.isStreaming {
-                Button {
-                    viewModel.stop()
-                } label: {
-                    Image(systemName: "stop.circle.fill").font(.title2)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(Theme.danger)
-                .help("Stop")
-            } else {
-                Button {
-                    viewModel.send()
-                } label: {
-                    Image(systemName: "arrow.up.circle.fill").font(.title2)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(Theme.accent)
-                .disabled(viewModel.input.trimmingCharacters(in: .whitespaces).isEmpty || !viewModel.providerConfigured)
+            Button {
+                viewModel.isStreaming ? viewModel.stop() : viewModel.send()
+            } label: {
+                Image(systemName: viewModel.isStreaming ? "stop.circle.fill" : "arrow.up.circle.fill")
+                    .font(.system(size: 30))
+                    .frame(width: 38, height: 38)    // ≥ HIG hit target, aligned to field height
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .foregroundStyle(viewModel.isStreaming ? Theme.danger : Theme.accent)
+            .disabled(!viewModel.isStreaming
+                      && (viewModel.input.trimmingCharacters(in: .whitespaces).isEmpty || !viewModel.providerConfigured))
+            .help(viewModel.isStreaming ? "Stop" : "Send")
         }
         .padding(Theme.Spacing.md)
     }
@@ -257,7 +279,8 @@ private struct TutorMessageBubble: View {
     @ViewBuilder
     private var bubbleContent: some View {
         if message.content.isEmpty {
-            Text("…").font(.callout)
+            // Waiting for the first token — show a lively thinking ticker.
+            RetroThinkingTicker(messages: ThinkingLines.tutor)
         } else if isUser {
             // User input is literal text — render plain so markdown characters
             // they typed aren't reinterpreted.

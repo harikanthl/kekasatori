@@ -76,14 +76,22 @@ struct PodcastSheet: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Label("Make a Podcast", systemImage: "waveform.circle.fill")
-                .font(.title3.weight(.semibold))
+        HStack(spacing: Theme.Spacing.md) {
+            Image(systemName: "waveform")
+                .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(Theme.accent)
-            Text("Two AI hosts discuss the pages you pick. \(paperTitle)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
+                .frame(width: 44, height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Theme.accent.opacity(0.12))
+                )
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Make a Podcast").font(.title3.weight(.semibold))
+                Text("Two AI hosts discuss the pages you pick.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
         }
     }
 
@@ -102,15 +110,27 @@ struct PodcastSheet: View {
     }
 
     private var pageRange: some View {
-        HStack(spacing: Theme.Spacing.lg) {
-            Stepper(value: $fromPage, in: 1...pageCount) {
-                Text("From page **\(fromPage)**")
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            HStack {
+                Text("PAGES")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("\(min(fromPage, toPage))–\(max(fromPage, toPage)) of \(pageCount)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
             }
-            Stepper(value: $toPage, in: 1...pageCount) {
-                Text("To page **\(toPage)**")
+            HStack(spacing: Theme.Spacing.lg) {
+                Stepper(value: $fromPage, in: 1...pageCount) { Text("From **\(fromPage)**") }
+                Stepper(value: $toPage, in: 1...pageCount) { Text("To **\(toPage)**") }
             }
+            .font(.callout)
         }
-        .font(.callout)
+        .padding(Theme.Spacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                .fill(Color.secondary.opacity(0.08))
+        )
     }
 
     private func resultPlayer(_ url: URL) -> some View {

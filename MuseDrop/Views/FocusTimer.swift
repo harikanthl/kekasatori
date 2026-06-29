@@ -18,13 +18,13 @@ final class FocusTimerModel: ObservableObject {
     static let shared = FocusTimerModel()
 
     enum Phase: Equatable {
-        case idle, focus, shortBreak
+        case idle, focus, shortBreak, longBreak
 
         var label: String {
             switch self {
-            case .idle:       return "FOCUS"
-            case .focus:      return "FOCUS"
-            case .shortBreak: return "BREAK"
+            case .idle, .focus:   return "FOCUS"
+            case .shortBreak:     return "BREAK"
+            case .longBreak:      return "LONG BREAK"
             }
         }
     }
@@ -34,17 +34,33 @@ final class FocusTimerModel: ObservableObject {
     @Published private(set) var isRunning = false
     @Published private(set) var completedSessions = 0
 
-    /// Lengths in minutes, surfaced for a future settings hook.
-    var focusMinutes: Int = 25
-    var breakMinutes: Int = 5
+    /// User-selectable focus length (minutes). Changing it while idle resets the clock.
+    @Published var focusMinutes: Int = 25 {
+        didSet { if phase == .idle { remaining = focusLength } }
+    }
+    /// Auto-start the next phase when one ends (classic Pomodoro flow).
+    @Published var autoStartNext: Bool = true
+
+    /// Selectable focus lengths shown in the picker.
+    static let focusPresets = [5, 10, 15, 25, 50]
+
+    let breakMinutes = 5
+    let longBreakMinutes = 15
+    /// A long break replaces the short break after this many focus sessions.
+    let sessionsBeforeLongBreak = 4
 
     private var ticker: AnyCancellable?
 
     private var focusLength: TimeInterval { TimeInterval(focusMinutes * 60) }
     private var breakLength: TimeInterval { TimeInterval(breakMinutes * 60) }
+    private var longBreakLength: TimeInterval { TimeInterval(longBreakMinutes * 60) }
 
     var total: TimeInterval {
-        phase == .shortBreak ? breakLength : focusLength
+        switch phase {
+        case .longBreak:  return longBreakLength
+        case .shortBreak: return breakLength
+        default:          return focusLength
+        }
     }
 
     /// Elapsed fraction (0…1) for the dial's sweep.
@@ -98,18 +114,23 @@ final class FocusTimerModel: ObservableObject {
         case .idle, .focus:
             if phase == .focus {
                 completedSessions += 1
+                let long = completedSessions % sessionsBeforeLongBreak == 0
+                phase = long ? .longBreak : .shortBreak
+                remaining = long ? longBreakLength : breakLength
                 AppStatusCenter.shared.success(
                     "Focus session complete",
-                    detail: "#\(completedSessions) · take a \(breakMinutes)-min break"
+                    detail: "#\(completedSessions) · take a \(long ? longBreakMinutes : breakMinutes)-min break"
                 )
+            } else {
+                phase = .shortBreak
+                remaining = breakLength
             }
-            phase = .shortBreak
-            remaining = breakLength
-        case .shortBreak:
+        case .shortBreak, .longBreak:
             AppStatusCenter.shared.info("Break over", detail: "back to focus")
             phase = .focus
             remaining = focusLength
         }
+        if !autoStartNext { pause() }
     }
 }
 
@@ -121,43 +142,35 @@ struct FocusTimerWidget: View {
     @State private var expanded = false
 
     private var tint: Color {
-        model.phase == .shortBreak ? Color(red: 0.25, green: 0.70, blue: 0.45) : theme.accent
+        (model.phase == .shortBreak || model.phase == .longBreak)
+            ? Color(red: 0.25, green: 0.70, blue: 0.45) : theme.accent
     }
 
     var body: some View {
-        Group {
-            if expanded {
+        Button { expanded.toggle() } label: { launcherLabel }
+            .buttonStyle(.plain)
+            .help("Focus timer")
+            .popover(isPresented: $expanded, arrowEdge: .bottom) {
                 expandedCard
-                    .transition(.scale(scale: 0.85, anchor: .bottomTrailing).combined(with: .opacity))
-            } else {
-                launcher
-                    .transition(.scale(scale: 0.85, anchor: .bottomTrailing).combined(with: .opacity))
             }
-        }
-        .animation(.snappy(duration: 0.28), value: expanded)
     }
 
-    // Collapsed: a small dial-faced button; shows the clock when active.
-    private var launcher: some View {
-        Button {
-            expanded = true
-        } label: {
-            ZStack {
-                FocusDial(progress: model.progress, tint: tint, compact: true)
-                    .frame(width: 46, height: 46)
-                if model.phase == .idle {
-                    Image(systemName: "timer")
-                        .font(.system(size: 16, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(tint)
-                } else {
-                    Text(model.clockText)
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.white)
-                }
+    // Collapsed: a small dial-faced toolbar button; shows the clock when active.
+    private var launcherLabel: some View {
+        ZStack {
+            FocusDial(progress: model.progress, tint: tint, compact: true)
+                .frame(width: 30, height: 30)
+            if model.phase == .idle {
+                Image(systemName: "timer")
+                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(tint)
+            } else {
+                Text(model.clockText)
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white)
             }
         }
-        .buttonStyle(.plain)
-        .help("Focus timer")
+        .frame(width: 30, height: 30)
     }
 
     private var expandedCard: some View {
@@ -203,6 +216,28 @@ struct FocusTimerWidget: View {
                 .help(model.isRunning ? "Pause" : "Start")
                 control("forward.end.fill", "Skip") { model.skip() }
             }
+
+            Divider().overlay(.white.opacity(0.12))
+
+            HStack(spacing: 8) {
+                Image(systemName: "timer").font(.caption2).foregroundStyle(.white.opacity(0.5))
+                Picker("Focus length", selection: $model.focusMinutes) {
+                    ForEach(FocusTimerModel.focusPresets, id: \.self) { Text("\($0)m").tag($0) }
+                }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .controlSize(.small)
+                .tint(tint)
+                .disabled(model.isRunning)
+                Spacer()
+                Toggle("Auto", isOn: $model.autoStartNext)
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .tint(tint)
+                    .help("Auto-start the next phase (long break every \(model.sessionsBeforeLongBreak) sessions)")
+            }
+            .font(.system(.caption2, design: .monospaced))
+            .foregroundStyle(.white.opacity(0.7))
         }
         .padding(14)
         .frame(width: 184)

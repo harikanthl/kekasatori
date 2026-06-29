@@ -109,7 +109,11 @@ struct DiscoverView: View {
             }
 
             if let stage = model.stage, model.isRunning {
-                ProgressTimeline(current: stage)
+                VStack(spacing: Theme.Spacing.sm) {
+                    PlayfulLoader(size: 160)
+                    ProgressTimeline(current: stage)
+                }
+                .frame(maxWidth: .infinity)
             }
 
             if let error = model.errorMessage {
@@ -196,13 +200,13 @@ struct DiscoverView: View {
                     .foregroundStyle(.secondary)
                     .padding(.top, 2)
                 TextField(
-                    "Ask a research question…",
+                    "Search papers — or ask a question, then Deep Research…",
                     text: $model.question,
                     axis: .vertical
                 )
                 .textFieldStyle(.plain)
                 .lineLimit(1...4)
-                .onSubmit { model.run() }
+                .onSubmit { model.search() }
                 .disabled(model.isRunning)
             }
             .padding(.horizontal, Theme.Spacing.md)
@@ -229,15 +233,27 @@ struct DiscoverView: View {
                 }
                 .controlSize(.large)
             } else {
+                // Default action: a fast paper lookup (no LLM, no key needed).
+                Button {
+                    model.search()
+                } label: {
+                    Label("Search", systemImage: "magnifyingglass")
+                }
+                .controlSize(.large)
+                .disabled(model.question.trimmingCharacters(in: .whitespacesAndNewlines).count < 2)
+
+                // Opt-in: synthesize a cited answer across the literature (the
+                // 5-phase agent; needs an AI provider key).
                 Button {
                     model.run()
                 } label: {
-                    Label("Research", systemImage: "sparkles")
+                    Label("Deep Research", systemImage: "sparkles")
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Theme.accent)
                 .controlSize(.large)
                 .keyboardShortcut(.return, modifiers: .command)
+                .help("Reads and synthesizes a cited answer across the literature. Requires an AI provider key (Settings → AI Providers).")
                 .disabled(model.question.trimmingCharacters(in: .whitespacesAndNewlines).count < 4)
             }
         }
@@ -779,9 +795,12 @@ private struct TrendingFeed: View {
             }
 
             if isLoading && papers.isEmpty {
-                ProgressView("Loading trending papers…")
+                VStack(spacing: Theme.Spacing.sm) {
+                    PlayfulLoader(size: 220)
+                    Text("Loading trending papers…").font(.callout).foregroundStyle(.secondary)
+                }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 64)
+                    .padding(.vertical, 48)
             } else if let errorMessage, papers.isEmpty {
                 VStack(spacing: Theme.Spacing.md) {
                     EmptyStateView(
@@ -971,6 +990,16 @@ private struct TrendingCard: View {
                 .controlSize(.small)
                 .help("Open source page")
             }
+
+            // Cockpit entry point: spin up a workspace for this paper/repo.
+            Button {
+                CockpitLauncher.newWorkspace(from: hit)
+            } label: {
+                Image(systemName: "gauge.with.dots.needle.67percent")
+            }
+            .buttonStyle(.borderless)
+            .controlSize(.small)
+            .help("New cockpit workspace from this paper")
         }
     }
 
@@ -1049,9 +1078,12 @@ private struct BrowseResults: View {
             }
 
             if isLoading && results.isEmpty {
-                ProgressView("Searching…")
+                VStack(spacing: Theme.Spacing.sm) {
+                    PlayfulLoader(size: 220)
+                    Text("Searching…").font(.callout).foregroundStyle(.secondary)
+                }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 64)
+                    .padding(.vertical, 48)
             } else if let errorMessage, results.isEmpty {
                 EmptyStateView(systemImage: "magnifyingglass",
                                title: "No papers found",

@@ -243,7 +243,17 @@ final class DiscoverViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Research run
+    // MARK: - Search & Research
+
+    /// Fast paper lookup from the search box: lists matching papers with no LLM
+    /// call and no API key required. Reuses the browse pipeline (same result
+    /// cards, sort, range, and pagination). This is the default action; Deep
+    /// Research (`run()`) is the explicit, opt-in synthesis.
+    func search() {
+        let query = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard query.count >= 2, !isRunning else { return }
+        browse(query)
+    }
 
     func run() {
         let query = question.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -254,6 +264,7 @@ final class DiscoverViewModel: ObservableObject {
         }
 
         task?.cancel()
+        exitBrowse()            // a synthesis replaces any list of search results
         report = nil
         errorMessage = nil
         stage = .planning
@@ -320,7 +331,8 @@ final class DiscoverViewModel: ObservableObject {
         if let arxivId = hit.arxivId, !arxivId.isEmpty {
             return try await PaperImportService.shared.importFromURL("https://arxiv.org/abs/\(arxivId)")
         }
-        if let pdf = hit.pdfURL, !pdf.isEmpty, let url = URL(string: pdf) {
+        if let pdf = hit.pdfURL, !pdf.isEmpty,
+           PaperHit.isReputableScholarlyHost(pdf), let url = URL(string: pdf) {
             return try await PaperImportService.shared.importLocalPDF(from: url)
         }
         throw NSError(
@@ -333,6 +345,9 @@ final class DiscoverViewModel: ObservableObject {
 
     private func finish(with result: DeepResearchReport) {
         report = result
+        // Persist the run as a durable brief (workspace context) and remember it.
+        let brief = ResearchBriefStore.shared.add(title: result.question, text: Self.plainText(result))
+        MemoryCapture.capture(brief)
         stage = .done
         isRunning = false
         task = nil
@@ -353,7 +368,10 @@ final class DiscoverViewModel: ObservableObject {
 
     // MARK: - Persistence
 
-    private static let providersKey = "discover.enabledProviders"
+    // v2: bumped when HuggingFace + GitHub sources were added so existing users'
+    // persisted subset (which predates them) is ignored once and everyone gets the
+    // full field default — the new sources on by default, still toggleable.
+    private static let providersKey = "discover.enabledProviders.v2"
 
     private static func loadProviders(for field: ResearchField) -> Set<ScholarlyProviderID> {
         let allowed = Set(field.providers)

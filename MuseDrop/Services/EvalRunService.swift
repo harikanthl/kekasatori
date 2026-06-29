@@ -134,7 +134,7 @@ enum EvalRunService {
     }
 }
 
-struct EvalMetric: Identifiable, Equatable {
+struct EvalMetric: Identifiable, Equatable, Codable, Sendable {
     var id: String { label }
     let label: String
     let value: Double

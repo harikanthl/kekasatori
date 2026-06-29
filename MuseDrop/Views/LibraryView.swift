@@ -13,6 +13,7 @@ struct LibraryView: View {
     @State private var playerWindowController: NSWindowController?
     @State private var itemPendingDeletion: DownloadItem?
     @State private var showDeleteConfirmation = false
+    @State private var collapsedPlaylists: Set<UUID> = []
 
     var body: some View {
         ScrollView {
@@ -39,6 +40,19 @@ struct LibraryView: View {
                     .pickerStyle(.menu)
                     .labelsHidden()
                     .frame(width: 140)
+
+                    Menu {
+                        Picker("Sort", selection: $viewModel.selectedSort) {
+                            ForEach(LibraryViewModel.SortType.allCases, id: \.self) { type in
+                                Text(type.rawValue).tag(type)
+                            }
+                        }
+                    } label: {
+                        Label(viewModel.selectedSort.rawValue, systemImage: "arrow.up.arrow.down")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help("Sort the library")
                 }
                 .padding(.horizontal, Theme.Spacing.md)
                 .padding(.vertical, Theme.Spacing.sm)
@@ -50,16 +64,28 @@ struct LibraryView: View {
                         .screenColumn()
                 }
 
-                // Media Grid
+                // Media Grid — playlist collections first (collapsible), then loose items.
                 if !viewModel.filteredItems.isEmpty {
-                    LibraryMediaGrid(
-                        items: viewModel.filteredItems,
-                        selectedItemID: viewModel.selectedItemID,
-                        mastery: viewModel.masteryByDownload,
-                        onSelect: { viewModel.select($0) },
-                        onOpen: { openPlayerWindow(for: $0) },
-                        onDelete: { confirmDelete($0) }
-                    )
+                    VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
+                        ForEach(viewModel.playlistGroups) { group in
+                            DisclosureGroup(isExpanded: playlistExpanded(group.id)) {
+                                mediaGrid(group.items)
+                                    .padding(.top, Theme.Spacing.sm)
+                            } label: {
+                                HStack(spacing: Theme.Spacing.sm) {
+                                    Image(systemName: "list.and.film").foregroundStyle(Theme.accent)
+                                    Text(group.title).font(.headline).lineLimit(1)
+                                    Text("\(group.items.count)")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                    Spacer(minLength: Theme.Spacing.sm)
+                                    playlistHeaderControl(group)
+                                }
+                            }
+                        }
+                        if !viewModel.looseItems.isEmpty {
+                            mediaGrid(viewModel.looseItems)
+                        }
+                    }
                     .screenColumn()
                 } else if viewModel.searchText.isEmpty {
                     EmptyStateView(
@@ -109,6 +135,62 @@ struct LibraryView: View {
         .onAppear { viewModel.refreshMastery() }
     }
     
+    /// Trailing control on a playlist header: live progress + cancel while this
+    /// collection is generating, otherwise a "Generate study packs" button. The
+    /// button is hidden for other collections while one batch is already running.
+    @ViewBuilder
+    private func playlistHeaderControl(_ group: LibraryViewModel.PlaylistGroup) -> some View {
+        if let batch = viewModel.packBatch, batch.playlistId == group.id {
+            HStack(spacing: Theme.Spacing.sm) {
+                ProgressView().controlSize(.small)
+                Text("\(batch.processed) / \(batch.total)")
+                    .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                Button {
+                    viewModel.cancelPackBatch()
+                } label: {
+                    Image(systemName: "stop.circle")
+                }
+                .buttonStyle(.borderless)
+                .help("Stop generating")
+            }
+            .help(batch.currentTitle.isEmpty ? "Generating study packs…" : batch.currentTitle)
+        } else if !viewModel.isGeneratingPacks {
+            Button {
+                viewModel.generatePacks(for: group)
+            } label: {
+                Label("Generate study packs", systemImage: "wand.and.stars")
+                    .font(.caption)
+                    .labelStyle(.titleAndIcon)
+            }
+            .buttonStyle(.borderless)
+            .disabled(!SettingsViewModel.isAIEnabled)
+            .help(SettingsViewModel.isAIEnabled
+                  ? "Build a study pack for every video in this collection"
+                  : "Enable AI study packs in Settings first")
+        }
+    }
+
+    private func mediaGrid(_ items: [DownloadItem]) -> some View {
+        LibraryMediaGrid(
+            items: items,
+            selectedItemID: viewModel.selectedItemID,
+            mastery: viewModel.masteryByDownload,
+            onSelect: { viewModel.select($0) },
+            onOpen: { openPlayerWindow(for: $0) },
+            onDelete: { confirmDelete($0) }
+        )
+    }
+
+    /// Playlist sections default to expanded; track collapsed ones in a Set.
+    private func playlistExpanded(_ id: UUID) -> Binding<Bool> {
+        Binding(
+            get: { !collapsedPlaylists.contains(id) },
+            set: { expand in
+                if expand { collapsedPlaylists.remove(id) } else { collapsedPlaylists.insert(id) }
+            }
+        )
+    }
+
     private var selectionToolbar: some View {
         HStack(spacing: Theme.Spacing.md) {
             if let selected = viewModel.selectedItem {

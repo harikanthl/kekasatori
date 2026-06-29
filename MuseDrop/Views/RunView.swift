@@ -47,16 +47,22 @@ struct RunView: View {
     private var engineSection: some View {
         if let runtime = model.runtime {
             if runtime.isReady {
-                HStack(spacing: Theme.Spacing.sm) {
-                    Image(systemName: "shippingbox.fill").foregroundStyle(Theme.success)
-                    Text(runtime.statusMessage).font(.callout.weight(.medium))
-                    Spacer(minLength: 0)
-                    if model.canStartEngine {
-                        Button("Start engine") { model.startEngine() }
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                    HStack(spacing: Theme.Spacing.sm) {
+                        Image(systemName: "shippingbox.fill").foregroundStyle(Theme.success)
+                        Text(runtime.statusMessage).font(.callout.weight(.medium))
+                        Spacer(minLength: 0)
+                        ComputePill(store: model.computeTargets, accruedCostUSD: model.accruedCostUSD)
+                        if model.canStartEngine {
+                            Button("Start engine") { model.startEngine() }
+                                .controlSize(.small)
+                        }
+                        Button("Re-check") { model.checkRuntime() }
                             .controlSize(.small)
                     }
-                    Button("Re-check") { model.checkRuntime() }
-                        .controlSize(.small)
+                    if let notice = model.remoteEvalNotice {
+                        Text(notice).font(.caption).foregroundStyle(.secondary)
+                    }
                 }
                 .padding(Theme.Spacing.md)
                 .cardSurface(radius: Theme.Radius.md)
@@ -302,7 +308,7 @@ struct RunView: View {
 
             ScrollViewReader { proxy in
                 ScrollView {
-                    Text(model.log.isEmpty ? "Run a benchmark to stream container output here." : model.log)
+                    Text(model.log.isEmpty ? (model.isRunning ? "" : "Run a benchmark to stream container output here.") : model.log)
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(model.log.isEmpty ? .tertiary : .primary)
                         .textSelection(.enabled)
@@ -311,6 +317,15 @@ struct RunView: View {
                     Color.clear.frame(height: 1).id(Self.logBottom)
                 }
                 .frame(minHeight: 220, maxHeight: 420)
+                .overlay {
+                    if model.isRunning && model.log.isEmpty {
+                        VStack(spacing: Theme.Spacing.sm) {
+                            PlayfulLoader(size: 180)
+                            Text("Provisioning compute & warming up…")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
                 .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).fill(Theme.fieldFill))
                 .overlay(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).strokeBorder(Color(nsColor: .separatorColor)))
                 .onChange(of: model.log) { _, _ in

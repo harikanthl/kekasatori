@@ -77,6 +77,29 @@ enum MediaSourceIdentity {
         return nil
     }
     
+    /// The YouTube playlist id in a URL, but **only** for real, finite playlists
+    /// (uploads/created lists: `PL`, `UU`, `OL`, `LL`, `FL`). Auto-generated radio
+    /// / "mix" lists (`RD…`) are infinite and treated as a single video, so they
+    /// return nil. Used to decide whether to offer a whole-playlist import.
+    static func youtubePlaylistID(from urlString: String) -> String? {
+        let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed),
+              let host = url.host?.lowercased(), host.contains("youtube.com"),
+              let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
+              let list = items.first(where: { $0.name == "list" })?.value,
+              !list.isEmpty else {
+            return nil
+        }
+        let realPrefixes = ["PL", "UU", "OL", "LL", "FL"]
+        guard realPrefixes.contains(where: { list.hasPrefix($0) }) else { return nil }
+        return list
+    }
+
+    /// Canonical playlist URL for yt-dlp enumeration.
+    static func playlistURL(forID id: String) -> String {
+        "https://www.youtube.com/playlist?list=\(id)"
+    }
+
     static func durationsAreCompatible(videoSeconds: Double?, transcriptSeconds: Double?) -> Bool {
         guard let videoSeconds, videoSeconds > 60,
               let transcriptSeconds, transcriptSeconds > 60 else {

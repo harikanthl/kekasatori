@@ -6,13 +6,16 @@
 //
 
 import SwiftUI
+import AppKit
 
 enum NavigationTab: Hashable {
     case home
+    case cockpit
     case discover
     case compare
     case run
     case code
+    case notebox
     case learn
     case downloads
     case library
@@ -28,10 +31,31 @@ struct ContentView: View {
     // Keep the Monaco-backed tabs alive after first visit (no reload/flash).
     @State private var visitedCode = false
     @State private var visitedLearn = false
+    @State private var visitedNotebox = false
     @AppStorage("hasSeenWelcome") private var hasSeenWelcome = false
     @State private var showWelcome = false
     @State private var showPersistenceWarning = DataStore.shared.persistenceDegraded
     @ObservedObject private var themeManager = ThemeManager.shared
+
+    @ViewBuilder
+    private var tabSwitch: some View {
+        switch selectedTab {
+        case .home:            HomeView(selectedTab: $selectedTab)
+        case .cockpit:         CockpitView()
+        case .discover:        DiscoverView()
+        case .compare:         PromptLabView()
+        case .run:             RunView()
+        case .downloads:       DownloadsView()
+        case .library:         LibraryView()
+        case .studyPackHistory: StudyPackHistoryView()
+        case .community:       CommunityView()
+        case .externalDevices: ExternalDrivesView()
+        case .help:            HelpView()
+        case .settings:        SettingsView()
+        case .code, .learn, .notebox:
+            Color.clear   // rendered persistently below
+        }
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -57,6 +81,8 @@ struct ContentView: View {
                     Section("Main") {
                         Label("Home", systemImage: "house")
                             .tag(NavigationTab.home)
+                        Label("Cockpit", systemImage: "gauge.with.dots.needle.67percent")
+                            .tag(NavigationTab.cockpit)
                         Label("Discover", systemImage: "sparkle.magnifyingglass")
                             .tag(NavigationTab.discover)
                         Label("Compare", systemImage: "rectangle.split.3x1")
@@ -65,6 +91,8 @@ struct ContentView: View {
                             .tag(NavigationTab.run)
                         Label("Code", systemImage: "chevron.left.forwardslash.chevron.right")
                             .tag(NavigationTab.code)
+                        Label("Notebox", systemImage: "book.pages")
+                            .tag(NavigationTab.notebox)
                         Label("Learn", systemImage: "graduationcap")
                             .tag(NavigationTab.learn)
                         Label("Library", systemImage: "square.stack.3d.up")
@@ -105,55 +133,52 @@ struct ContentView: View {
             }
             .navigationSplitViewColumnWidth(min: 220, ideal: 240)
         } detail: {
+            VStack(spacing: 0) {
             ZStack {
                 // Lightweight tabs — created/destroyed freely on switch.
-                Group {
-                    switch selectedTab {
-                    case .home:
-                        HomeView(selectedTab: $selectedTab)
-                    case .discover:
-                        DiscoverView()
-                    case .compare:
-                        PromptLabView()
-                    case .run:
-                        RunView()
-                    case .downloads:
-                        DownloadsView()
-                    case .library:
-                        LibraryView()
-                    case .studyPackHistory:
-                        StudyPackHistoryView()
-                    case .community:
-                        CommunityView()
-                    case .externalDevices:
-                        ExternalDrivesView()
-                    case .help:
-                        HelpView()
-                    case .settings:
-                        SettingsView()
-                    case .code, .learn:
-                        Color.clear   // rendered persistently below
-                    }
-                }
+                tabSwitch
 
                 // WebView-heavy tabs (Monaco) — kept alive after first visit so
                 // they don't reload/flash every time you navigate back.
                 if visitedCode {
-                    CodeBoxView()
+                    CodeBoxView(isActive: selectedTab == .code)
                         .opacity(selectedTab == .code ? 1 : 0)
                         .allowsHitTesting(selectedTab == .code)
                 }
                 if visitedLearn {
-                    LearnView()
+                    LearnView(isActive: selectedTab == .learn)
                         .opacity(selectedTab == .learn ? 1 : 0)
                         .allowsHitTesting(selectedTab == .learn)
                 }
+                if visitedNotebox {
+                    NoteboxView(isActive: selectedTab == .notebox)
+                        .opacity(selectedTab == .notebox ? 1 : 0)
+                        .allowsHitTesting(selectedTab == .notebox)
+                }
             }
             .onChange(of: selectedTab) { _, tab in
+                // Clear any I-beam left set by a web-view editor we're navigating away from.
+                NSCursor.arrow.set()
                 if tab == .code { visitedCode = true }
                 if tab == .learn { visitedLearn = true }
+                if tab == .notebox { visitedNotebox = true }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openCockpit)) { _ in
+                selectedTab = .cockpit
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openCode)) { _ in
+                selectedTab = .code
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .openNotebox)) { _ in
+                selectedTab = .notebox
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                // Persistent retro indicator: active workspace + compute dial state.
+                ActiveContextBar()
+                    .padding(.horizontal, Theme.Spacing.sm)
+                    .padding(.bottom, 6)
+            }
             .background {
                 ZStack {
                     Color(nsColor: .windowBackgroundColor)

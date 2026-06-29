@@ -44,6 +44,8 @@ enum AIStudyTab: String, CaseIterable, Identifiable {
 enum AIEngineKind: String, Codable {
     case foundationModels
     case naturalLanguageFallback
+    /// A configured BYOK cloud provider (OpenAI-compatible) generated the pack.
+    case cloud
 }
 
 struct MediaTranscript: Codable {

@@ -64,15 +64,16 @@ struct PaperHit: Identifiable, Codable, Sendable {
         self.stars = stars
     }
 
-    /// Stable identity for dedupe & SwiftUI lists: DOI → arXiv id → normalized
-    /// title. Derived, never encoded.
-    var id: String { Self.dedupeKey(doi: doi, arxivId: arxivId, title: title) }
+    /// Stable identity for dedupe & SwiftUI lists: DOI → arXiv id → repo URL
+    /// (code results) → normalized title. Derived, never encoded.
+    var id: String { Self.dedupeKey(doi: doi, arxivId: arxivId, repoURL: repoURL, title: title) }
 
     // MARK: - Dedupe / merge
 
     /// Collapse duplicate hits (same `id`) into one, keeping the richest fields
     /// and unioning sources. Input order is preserved for the survivors.
     static func merge(_ hits: [PaperHit]) -> [PaperHit] {
+        // Pass 1: collapse by exact identity (DOI / arXiv id / title).
         var byKey: [String: PaperHit] = [:]
         var order: [String] = []
         for hit in hits {
@@ -85,7 +86,29 @@ struct PaperHit: Identifiable, Codable, Sendable {
                 order.append(key)
             }
         }
-        return order.compactMap { byKey[$0] }
+
+        // Pass 2: collapse records that share a title but were kept apart by
+        // mismatched identifiers — notably a poisoned metadata record (fake DOI
+        // pointing at a junk mirror) vs. the canonical arXiv record. Folding them
+        // propagates the arXiv id + a reputable URL onto one survivor and drops
+        // the junk duplicate. Guarded on a non-trivial title to avoid collisions.
+        var survivorByTitle: [String: String] = [:]
+        var dropped = Set<String>()
+        for key in order {
+            guard let hit = byKey[key] else { continue }
+            // Never fold a code result (repo) into a paper by title.
+            if key.hasPrefix("repo:") { continue }
+            let title = normalizedTitle(hit.title)
+            guard title.count > 8 else { continue }
+            if let survivorKey = survivorByTitle[title], var survivor = byKey[survivorKey] {
+                survivor.absorb(hit)
+                byKey[survivorKey] = survivor
+                dropped.insert(key)
+            } else {
+                survivorByTitle[title] = key
+            }
+        }
+        return order.filter { !dropped.contains($0) }.compactMap { byKey[$0] }
     }
 
     /// Fold another hit (assumed same paper) into this one, filling gaps and
@@ -94,8 +117,8 @@ struct PaperHit: Identifiable, Codable, Sendable {
         if other.abstract.count > abstract.count { abstract = other.abstract }
         if (doi ?? "").isEmpty { doi = other.doi }
         if (arxivId ?? "").isEmpty { arxivId = other.arxivId }
-        if (url ?? "").isEmpty { url = other.url }
-        if (pdfURL ?? "").isEmpty { pdfURL = other.pdfURL }
+        url = Self.preferredURL(url, other.url)
+        pdfURL = Self.preferredURL(pdfURL, other.pdfURL)
         if year == nil { year = other.year }
         if (venue ?? "").isEmpty { venue = other.venue }
         if authors.isEmpty { authors = other.authors }
@@ -107,9 +130,12 @@ struct PaperHit: Identifiable, Codable, Sendable {
 
     // MARK: - Key derivation
 
-    static func dedupeKey(doi: String?, arxivId: String?, title: String) -> String {
+    static func dedupeKey(doi: String?, arxivId: String?, repoURL: String? = nil, title: String) -> String {
         if let doi, !doi.isEmpty { return "doi:" + doi.lowercased() }
         if let arxivId, !arxivId.isEmpty { return "arxiv:" + normalizedArxivId(arxivId) }
+        // A code result (repo link, no paper id) is keyed by its repo so it stays
+        // distinct from a same-named paper rather than collapsing into it.
+        if let repoURL, !repoURL.isEmpty { return "repo:" + repoURL.lowercased() }
         return "title:" + normalizedTitle(title)
     }
 
@@ -131,6 +157,40 @@ struct PaperHit: Identifiable, Codable, Sendable {
             value.removeSubrange(range)
         }
         return value
+    }
+
+    // MARK: - URL trust
+
+    /// Reputable scholarly hosts whose PDF/landing links we'll open directly.
+    /// Anything else (e.g. predatory mirrors OpenAlex sometimes ingests, like
+    /// `langtaosha.org.cn`) is treated as untrusted and not surfaced as a link.
+    private static let trustedHosts: Set<String> = [
+        "arxiv.org", "doi.org", "openreview.net", "aclanthology.org", "acm.org",
+        "springer.com", "nature.com", "sciencedirect.com", "ieee.org", "nih.gov",
+        "europepmc.org", "biorxiv.org", "medrxiv.org", "mlr.press", "nips.cc",
+        "neurips.cc", "openalex.org", "semanticscholar.org", "jmlr.org", "aaai.org",
+        "mdpi.com", "frontiersin.org", "plos.org", "wiley.com", "tandfonline.com",
+        "cell.com", "science.org", "pnas.org", "oup.com", "github.com",
+        "huggingface.co", "ssrn.com", "researchsquare.com", "elifesciences.org"
+    ]
+
+    /// Whether a URL string points at a known-reputable scholarly host (exact
+    /// host or a subdomain of one). Unknown hosts are conservatively untrusted.
+    static func isReputableScholarlyHost(_ urlString: String) -> Bool {
+        guard let host = URL(string: urlString)?.host?.lowercased() else { return false }
+        return trustedHosts.contains { host == $0 || host.hasSuffix("." + $0) }
+    }
+
+    /// Pick the more trustworthy of two URLs: a reputable host beats an unknown
+    /// one; otherwise keep the existing value. Empty values defer to the other.
+    static func preferredURL(_ current: String?, _ incoming: String?) -> String? {
+        let cur = current ?? "", inc = incoming ?? ""
+        if cur.isEmpty { return incoming }
+        if inc.isEmpty { return current }
+        let curTrusted = isReputableScholarlyHost(cur)
+        let incTrusted = isReputableScholarlyHost(inc)
+        if incTrusted && !curTrusted { return incoming }
+        return current
     }
 }
 

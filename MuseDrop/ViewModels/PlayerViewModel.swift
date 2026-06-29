@@ -10,9 +10,14 @@ import Combine
 @MainActor
 class PlayerViewModel: ObservableObject {
     @Published var isPlaying: Bool = false
+    /// True once the track has played to the end — the transport shows a replay
+    /// icon and the next play restarts from the beginning.
+    @Published var didReachEnd: Bool = false
     @Published var currentTime: TimeInterval = 0
     @Published var duration: TimeInterval = 0
     @Published var volume: Float = 1.0
+    /// Playback speed for the custom audio/podcast transport (0.75×–2×).
+    @Published var playbackRate: Double = 1.0
     
     @Published var analysis: MediaAnalysis?
     @Published var selectedStudyTab: AIStudyTab = .canvas
@@ -222,9 +227,57 @@ class PlayerViewModel: ObservableObject {
         startStreamLoad(for: item, forceRefresh: true)
     }
     
+    // MARK: - Transport (custom audio/podcast controls)
+
+    func togglePlayPause() {
+        guard let player else { return }
+        if player.timeControlStatus == .playing {
+            player.pause()
+        } else {
+            // At the end of the track, AVPlayer won't advance on play() — restart
+            // from the beginning so the play button doubles as a replay.
+            if didReachEnd || (duration > 0 && currentTime >= duration - 0.25) {
+                player.seek(to: .zero)
+                currentTime = 0
+                didReachEnd = false
+            }
+            player.play()
+            player.rate = Float(playbackRate)
+        }
+    }
+
+    /// Restart the track from the beginning and play.
+    func restart() {
+        guard let player else { return }
+        player.seek(to: .zero)
+        currentTime = 0
+        didReachEnd = false
+        player.play()
+        player.rate = Float(playbackRate)
+    }
+
+    func seek(to time: TimeInterval) {
+        guard let player else { return }
+        let target = duration > 0 ? min(max(0, time), duration) : max(0, time)
+        player.seek(to: CMTime(seconds: target, preferredTimescale: 600))
+        currentTime = target
+        // Seeking back from the end clears the finished state.
+        if target < duration - 0.25 { didReachEnd = false }
+    }
+
+    /// Relative skip (e.g. −15 / +15 seconds).
+    func skip(_ seconds: Double) { seek(to: currentTime + seconds) }
+
+    func setPlaybackRate(_ rate: Double) {
+        playbackRate = rate
+        player?.defaultRate = Float(rate)
+        if player?.timeControlStatus == .playing { player?.rate = Float(rate) }
+    }
+
     private func setupPlayer(with url: URL, durationHint: Double?, streamGeneration: UInt?) {
         cleanupObservers()
-        
+        didReachEnd = false
+
         let asset = AVURLAsset(url: url)
         let playerItem = AVPlayerItem(asset: asset)
         playerItem.preferredForwardBufferDuration = 15
@@ -258,7 +311,9 @@ class PlayerViewModel: ObservableObject {
         
         NotificationCenter.default.publisher(for: .AVPlayerItemDidPlayToEndTime)
             .sink { [weak self] _ in
-                self?.isPlaying = false
+                guard let self else { return }
+                self.isPlaying = false
+                self.didReachEnd = true
             }
             .store(in: &cancellables)
         
@@ -354,20 +409,31 @@ class PlayerViewModel: ObservableObject {
             let result = try await mediaAI.generateAnalysis(
                 for: item,
                 forceRegenerate: forceRegenerate,
-                session: session
-            ) { [weak self] progress in
-                Task { @MainActor in
-                    guard let self,
-                          self.activeGenerationSession == session,
-                          !self.isGenerationPaused else { return }
-                    self.isTranscriptionPhase = [
-                        .fetchingCaptions,
-                        .extractingAudio,
-                        .transcribing
-                    ].contains(progress.phase)
-                    self.aiProgressDetail = progress.detail
+                session: session,
+                onProgress: { [weak self] progress in
+                    Task { @MainActor in
+                        guard let self,
+                              self.activeGenerationSession == session,
+                              !self.isGenerationPaused else { return }
+                        self.isTranscriptionPhase = [
+                            .fetchingCaptions,
+                            .extractingAudio,
+                            .transcribing
+                        ].contains(progress.phase)
+                        self.aiProgressDetail = progress.detail
+                    }
+                },
+                onPartial: { [weak self] partial in
+                    // Fill the study tabs progressively as each artifact lands.
+                    Task { @MainActor in
+                        guard let self,
+                              self.activeGenerationSession == session,
+                              !self.isGenerationPaused else { return }
+                        self.analysis = partial
+                        self.lastAnalysisEngine = partial.engine
+                    }
                 }
-            }
+            )
             guard activeGenerationSession == session else { return }
             
             analysis = result
@@ -594,6 +660,7 @@ class PlayerViewModel: ObservableObject {
         currentTime = 0
         duration = 0
         isPlaying = false
+        didReachEnd = false
     }
     
     private func cleanupObservers() {

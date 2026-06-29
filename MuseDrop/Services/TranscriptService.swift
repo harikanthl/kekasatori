@@ -184,10 +184,14 @@ final class TranscriptService {
     }
     
     /// Stream & Study: captions first, then sampled audio — never full-hour WAV download.
+    /// `fullLength`: when captions are unavailable, transcribe the entire audio
+    /// on-device instead of the ~12-min quick sample. Used by batch playlist
+    /// import so every video's pack is complete (slower per video).
     func transcribeFromSourceURL(
         _ sourceURL: String,
         mediaKind: StreamMediaKind,
         durationSeconds: Double? = nil,
+        fullLength: Bool = false,
         session: UUID? = nil,
         onProgress: ProgressHandler? = nil
     ) async throws -> MediaTranscript {
@@ -210,11 +214,13 @@ final class TranscriptService {
             let meta = try? await StreamResolverService.shared.fetchMetadata(for: sourceURL)
             duration = meta?.durationSeconds ?? 0
         }
-        let sections = samplingSections(totalDuration: duration)
-        
+        let sections = samplingSections(totalDuration: duration, fullLength: fullLength)
+
         onProgress?(TranscriptProgress(
             phase: .extractingAudio,
-            detail: "Downloading first \(formatDuration(sections[0].duration)) of audio (captions unavailable)…"
+            detail: fullLength
+                ? "Downloading full audio to transcribe (captions unavailable)…"
+                : "Downloading first \(formatDuration(sections[0].duration)) of audio (captions unavailable)…"
         ))
         
         var combined = ""
@@ -242,7 +248,9 @@ final class TranscriptService {
         guard !trimmed.isEmpty else { throw TranscriptError.emptyTranscript }
         
         let coverageNote: String
-        if duration <= 0 {
+        if fullLength {
+            coverageNote = duration > 0 ? "Full audio via SpeechAnalyzer" : "Transcribed full audio via SpeechAnalyzer"
+        } else if duration <= 0 {
             // Duration unknown: we used a fabricated single segment, so don't
             // claim a specific covered amount or "full audio".
             coverageNote = "Transcribed first segment (duration unknown)"
@@ -455,11 +463,17 @@ final class TranscriptService {
         }
     }
     
-    private func samplingSections(totalDuration: Double) -> [AudioSection] {
+    private func samplingSections(totalDuration: Double, fullLength: Bool = false) -> [AudioSection] {
+        if fullLength {
+            // Whole audio in one section. For unknown duration, a large end lets
+            // yt-dlp/ffmpeg clamp to the actual length.
+            let end = totalDuration > 0 ? totalDuration : 6 * 3600
+            return [AudioSection(start: 0, end: end)]
+        }
         guard totalDuration > fullAudioThresholdSeconds else {
             return [AudioSection(start: 0, end: max(totalDuration, 60))]
         }
-        
+
         // One opening segment only — avoids 5 parallel-heavy extractions on long videos.
         let sampleEnd = min(quickFallbackSeconds, totalDuration)
         logService.info("Captions unavailable — sampling first \(Int(sampleEnd / 60)) min for speech recognition")

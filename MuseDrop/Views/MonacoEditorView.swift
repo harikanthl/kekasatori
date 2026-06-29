@@ -17,6 +17,10 @@ struct MonacoEditorView: NSViewRepresentable {
     @Binding var text: String
     var language: String        // Monaco language id: "python", "shell"
     var dark: Bool
+    /// When false (the tab isn't selected), the web view is hidden so its AppKit
+    /// tracking area stops setting the I-beam cursor over panes of other tabs.
+    /// Opacity/allowsHitTesting alone don't stop tracking — the NSView must be hidden.
+    var isActive: Bool = true
 
     private static let messageName = "monaco"
 
@@ -38,6 +42,7 @@ struct MonacoEditorView: NSViewRepresentable {
         context.coordinator.webView = webView
 
         let container = WebViewContainer(webView: webView)
+        container.isHidden = !isActive
         if let indexURL = PathUtils.monacoHostIndexURL(),
            let readAccess = PathUtils.monacoHostReadAccessURL() {
             webView.loadFileURL(indexURL, allowingReadAccessTo: readAccess)
@@ -46,6 +51,7 @@ struct MonacoEditorView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: WebViewContainer, context: Context) {
+        nsView.isHidden = !isActive               // stop tracking/cursor when tab inactive
         let coordinator = context.coordinator
         coordinator.parent = self                 // keep the binding fresh
         guard coordinator.ready else { return }   // initial push happens on `ready`

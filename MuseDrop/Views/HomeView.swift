@@ -62,6 +62,23 @@ struct HomeView: View {
                 AppStatusCenter.shared.success("Loaded link", detail: result.title)
             }
         }
+        .confirmationDialog(
+            "This link is part of a playlist",
+            isPresented: $viewModel.showPlaylistChoice,
+            titleVisibility: .visible
+        ) {
+            Button("Import whole playlist") { viewModel.confirmImportWholePlaylist() }
+            Button("Just this video") { viewModel.importThisVideoOnly() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Import every video in the playlist as a stream-only collection, or just this single video?")
+        }
+        .sheet(item: $viewModel.playlistToImport) { request in
+            PlaylistImportSheet(playlistURL: request.url, kind: request.kind) {
+                viewModel.urlInput = ""
+                viewModel.shouldNavigateToLibrary = true
+            }
+        }
     }
 
     // MARK: - Header
@@ -248,9 +265,17 @@ struct HomeView: View {
         case .streamOnly:
             actionChips([
                 ChipSpec(title: "Stream Audio", subtitle: "Listen · build a study pack", icon: "waveform",
-                         enabled: viewModel.isValidURL) { Task { await viewModel.streamAndStudy(kind: .audio) } },
+                         enabled: viewModel.isValidURL) {
+                             if !viewModel.routeToPlaylistIfNeeded(kind: .audio) {
+                                 Task { await viewModel.streamAndStudy(kind: .audio) }
+                             }
+                         },
                 ChipSpec(title: "Stream Video", subtitle: "Watch · build a study pack", icon: "play.circle",
-                         enabled: viewModel.isValidURL) { Task { await viewModel.streamAndStudy(kind: .video) } }
+                         enabled: viewModel.isValidURL) {
+                             if !viewModel.routeToPlaylistIfNeeded(kind: .video) {
+                                 Task { await viewModel.streamAndStudy(kind: .video) }
+                             }
+                         }
             ])
         case .download:
             actionChips([
@@ -324,7 +349,6 @@ struct HomeView: View {
            viewModel.isVideoDownload,
            viewModel.ingestionMode == .download {
             VStack(spacing: Theme.Spacing.lg) {
-                LottieAnimationView(animationName: "cat")
                 HomeWaitStatusCard(
                     title: viewModel.waitTitle,
                     detail: viewModel.waitDetailMessage,
@@ -498,8 +522,7 @@ private struct HomeWaitStatusCard: View {
 
     var body: some View {
         VStack(spacing: compact ? Theme.Spacing.sm : Theme.Spacing.md) {
-            ProgressView()
-                .controlSize(compact ? .regular : .small)
+            PlayfulLoader(size: compact ? 160 : 220)
 
             Text(title)
                 .font(compact ? .headline : .subheadline.weight(.semibold))

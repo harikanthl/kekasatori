@@ -432,8 +432,15 @@ enum PlayerWindowPresenter {
 
         let window = NSWindow(contentViewController: hostingController)
         window.title = item.displayTitle
-        window.setContentSize(NSSize(width: 1100, height: 720))
-        window.minSize = NSSize(width: 980, height: 620)
+        // Podcasts are a focused listening player — a compact portrait window.
+        // Video/papers keep the wide split with study tools.
+        if item.isPodcast {
+            window.setContentSize(NSSize(width: 460, height: 660))
+            window.minSize = NSSize(width: 400, height: 560)
+        } else {
+            window.setContentSize(NSSize(width: 1100, height: 720))
+            window.minSize = NSSize(width: 980, height: 620)
+        }
         window.styleMask = [
             .titled,
             .closable,

@@ -37,7 +37,11 @@ final class DownloadRecord {
     var streamExpiresAt: Date?
     var streamMediaKindRaw: String?
     var durationSeconds: Double?
-    
+
+    // Playlist grouping (additive — lightweight migration safe).
+    var playlistId: UUID?
+    var playlistTitle: String?
+
     @Relationship(deleteRule: .cascade, inverse: \StudySessionRecord.download)
     var studySession: StudySessionRecord?
     
@@ -62,7 +66,9 @@ final class DownloadRecord {
         streamURLString: String? = nil,
         streamExpiresAt: Date? = nil,
         streamMediaKindRaw: String? = nil,
-        durationSeconds: Double? = nil
+        durationSeconds: Double? = nil,
+        playlistId: UUID? = nil,
+        playlistTitle: String? = nil
     ) {
         self.id = id
         self.url = url
@@ -79,6 +85,8 @@ final class DownloadRecord {
         self.streamExpiresAt = streamExpiresAt
         self.streamMediaKindRaw = streamMediaKindRaw
         self.durationSeconds = durationSeconds
+        self.playlistId = playlistId
+        self.playlistTitle = playlistTitle
         self.canvasBoards = []
         self.notebookEntries = []
     }

@@ -16,8 +16,21 @@ final class CodeBoxViewModel: ObservableObject {
     @Published private(set) var isRunning = false
     @Published private(set) var runtime: ContainerRuntimeStatus?
     @Published private(set) var statusNote: String?
+    @Published private(set) var accruedCostUSD: Double?
+    /// Set when the user hits Run on a paid GPU target — the view confirms first.
+    @Published var pendingPaidConfirm = false
 
-    private var runner: ProcessRunner?
+    /// The compute dial: which target (local ↔ GPU) the next run uses. App-wide,
+    /// so a target picked here also applies in Run and the agent.
+    let computeTargets = ComputeTargetStore.shared
+    /// Optional spend ceiling for a single paid run (RunGuard stops past it).
+    var costCapUSD: Double?
+
+    private var backend: ComputeBackend?
+    private var runTask: Task<Void, Never>?
+    private var guardTask: Task<Void, Never>?
+    /// The run record assembled from the event stream, saved to history on finish.
+    private var currentRun: Run?
 
     init() {
         spec = CodeRunSpec(language: .python, image: "", code: CodeRunSpec.Language.python.starter)
@@ -25,13 +38,17 @@ final class CodeBoxViewModel: ObservableObject {
     }
 
     var canRun: Bool {
-        !isRunning && (runtime?.isReady ?? false)
+        !isRunning
             && !spec.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && computeTargets.canRunSelected(runtime: runtime)
     }
 
     func checkRuntime() {
         Task { @MainActor [weak self] in
-            self?.runtime = await ContainerRuntime.check()
+            guard let self else { return }
+            let status = await ContainerRuntime.check()
+            self.runtime = status
+            self.computeTargets.setLocal(from: status)
         }
     }
 
@@ -78,55 +95,104 @@ final class CodeBoxViewModel: ObservableObject {
     }
 
     func run() {
-        guard !isRunning,
-              let status = runtime, status.isReady, let cli = status.executable else {
-            statusNote = "No container engine detected — install one to run code."
+        guard !isRunning else { return }
+        // A paid GPU target needs an explicit confirm before we spend money.
+        if computeTargets.selected?.isPaid == true {
+            pendingPaidConfirm = true
+            return
+        }
+        launch()
+    }
+
+    /// Confirmed launch on a paid target (called from the confirmation dialog).
+    func confirmPaidRun() {
+        pendingPaidConfirm = false
+        launch()
+    }
+
+    private func launch() {
+        let backend: ComputeBackend
+        switch computeTargets.makeBackend(runtime: runtime) {
+        case .success(let b):
+            backend = b
+        case .failure(let error):
+            statusNote = error.message
             return
         }
 
-        let spec = self.spec
         output = ""
         statusNote = nil
+        accruedCostUSD = nil
         isRunning = true
-        let runner = ProcessRunner()
-        self.runner = runner
+        self.backend = backend
+        currentRun = Run(workspaceID: WorkspaceStore.shared.selectedID, kind: .script)
 
-        Task { @MainActor [weak self] in
+        let request = RunRequest.code(spec)
+        let target = computeTargets.selected
+        let costCap = costCapUSD
+        let start = Date()
+
+        runTask = Task { @MainActor [weak self] in
             do {
-                let dir = try CodeRunService.stage(spec)
-                defer { try? FileManager.default.removeItem(at: dir) }
-                let args = CodeRunService.buildArguments(
-                    image: spec.resolvedImage,
-                    hostWorkdir: dir.path,
-                    runCommand: spec.language.runCommand(file: spec.language.fileName)
-                )
-                for try await line in runner.runWithProgress(executable: cli, arguments: args) {
-                    self?.output += line
-                }
-                self?.finish(note: "Done.")
-            } catch is CancellationError {
-                self?.finish(note: "Stopped.")
-            } catch let error as ProcessError {
-                if case .nonZeroExit(let code, _) = error {
-                    self?.finish(note: "Exited with code \(code).")
-                } else {
-                    self?.finish(note: error.localizedDescription)
+                for try await event in backend.launch(request) {
+                    guard let self else { break }
+                    self.currentRun?.apply(event)
+                    switch event {
+                    case .log(let line):
+                        self.output += line
+                    case .cost(let usd):
+                        self.accruedCostUSD = usd
+                        if RunGuard.shouldStop(elapsed: Date().timeIntervalSince(start),
+                                               maxRuntime: target?.capabilities.maxRuntime,
+                                               costUSD: usd, costCapUSD: costCap) {
+                            self.stop(note: "Stopped — over budget/time guard.")
+                        }
+                    case .status(.succeeded):
+                        self.finish(note: "Done.")
+                    case .status(.failed(let reason)):
+                        self.finish(note: reason)
+                    case .status(.canceled):
+                        self.finish(note: "Stopped.")
+                    case .status, .metric, .artifact:
+                        break
+                    }
                 }
             } catch {
                 self?.finish(note: error.localizedDescription)
             }
         }
+
+        // Hard stop at the target's max runtime (e.g. a paid pod), if any.
+        if let maxRuntime = target?.capabilities.maxRuntime {
+            guardTask = Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(maxRuntime * 1_000_000_000))
+                if self?.isRunning == true { self?.stop(note: "Stopped — reached max runtime.") }
+            }
+        }
     }
 
-    func stop() {
-        runner?.cancel()
-        runner = nil
-        finish(note: "Stopped.")
+    func stop() { stop(note: "Stopped.") }
+
+    private func stop(note: String) {
+        runTask?.cancel()
+        let backend = self.backend
+        Task { await backend?.cancel() }
+        finish(note: note)
     }
 
     private func finish(note: String?) {
         isRunning = false
         statusNote = note
-        runner = nil
+        backend = nil
+        runTask = nil
+        guardTask?.cancel()
+        guardTask = nil
+        if var run = currentRun {
+            if !run.status.isTerminal { run.apply(.status(.canceled)) }
+            RunHistoryStore.shared.record(run)
+            if let ws = run.workspaceID { WorkspaceStore.shared.recordRun(run.id, in: ws) }
+            MemoryCapture.capture(run)
+            currentRun = nil
+        }
     }
 }

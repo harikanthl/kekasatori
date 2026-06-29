@@ -55,6 +55,8 @@ struct StudyPackSummary: Identifiable, Hashable, Sendable {
             return "Apple Intelligence"
         case AIEngineKind.naturalLanguageFallback.rawValue:
             return "Fallback engine"
+        case AIEngineKind.cloud.rawValue:
+            return "Cloud (BYOK)"
         default:
             return engineRaw
         }

@@ -26,7 +26,9 @@ enum MediaAnalysisMapper {
             streamURL: record.streamURLString.flatMap { URL(string: $0) },
             streamExpiresAt: record.streamExpiresAt,
             streamMediaKind: streamKind,
-            durationSeconds: record.durationSeconds
+            durationSeconds: record.durationSeconds,
+            playlistId: record.playlistId,
+            playlistTitle: record.playlistTitle
         )
     }
     
@@ -45,6 +47,8 @@ enum MediaAnalysisMapper {
         record.streamExpiresAt = item.streamExpiresAt
         record.streamMediaKindRaw = item.streamMediaKind?.rawValue
         record.durationSeconds = item.durationSeconds
+        record.playlistId = item.playlistId
+        record.playlistTitle = item.playlistTitle
     }
     
     static func makeDownloadRecord(from item: DownloadItem) -> DownloadRecord {
@@ -63,7 +67,9 @@ enum MediaAnalysisMapper {
             streamURLString: item.streamURL?.absoluteString,
             streamExpiresAt: item.streamExpiresAt,
             streamMediaKindRaw: item.streamMediaKind?.rawValue,
-            durationSeconds: item.durationSeconds
+            durationSeconds: item.durationSeconds,
+            playlistId: item.playlistId,
+            playlistTitle: item.playlistTitle
         )
     }
     

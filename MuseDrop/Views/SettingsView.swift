@@ -19,6 +19,10 @@ struct SettingsView: View {
     @State private var kaggleUserInput = KeychainService.get(KeychainService.Account.kaggleUsername) ?? ""
     @State private var kaggleKeyInput = ""
     @State private var kaggleSaved = KeychainService.has(KeychainService.Account.kaggleKey)
+    @State private var githubTokenInput = ""
+    @State private var githubTokenSaved = KeychainService.has(KeychainService.Account.githubToken)
+    @State private var hfTokenInput = ""
+    @State private var hfTokenSaved = KeychainService.has(KeychainService.Account.huggingFace)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -39,6 +43,7 @@ struct SettingsView: View {
                 downloadsSection
                 aiSection
                 aiProvidersSection
+                discoverSourcesSection
                 mcpSection
                 kaggleSection
                 manimSection
@@ -193,24 +198,50 @@ struct SettingsView: View {
                     Text(preset.displayName).tag(preset)
                 }
             }
-            .onChange(of: viewModel.llmPreset) { _, newValue in
-                if let base = newValue.defaultBaseURL, newValue != .custom {
-                    viewModel.llmBaseURL = base
-                }
-                viewModel.saveLLMSettings()
+            .onChange(of: viewModel.llmPreset) { _, _ in
+                viewModel.onLLMProviderChanged()
             }
 
             if viewModel.llmPreset != .onDevice {
+                // Base URL — auto-filled for known providers, editable for Custom.
+                if viewModel.llmPreset == .custom {
+                    TextField("Base URL (OpenAI-compatible)", text: $viewModel.llmBaseURL)
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit { viewModel.saveLLMSettings() }
+                } else if !viewModel.llmBaseURL.isEmpty {
+                    Label(viewModel.llmBaseURL, systemImage: "link")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+
+                // Model — free text, a menu of curated + live IDs, and Load models.
                 HStack {
                     TextField("Model ID", text: $viewModel.llmModelId)
                         .textFieldStyle(.roundedBorder)
                         .onSubmit { viewModel.saveLLMSettings() }
-                    if viewModel.llmPreset == .openRouter {
+
+                    let curated = viewModel.llmPreset.modelSuggestions
+                    if !curated.isEmpty || !viewModel.llmLoadedModels.isEmpty {
                         Menu {
-                            ForEach(LLMModelPreset.openRouterSuggestions, id: \.id) { suggestion in
-                                Button(suggestion.label) {
-                                    viewModel.llmModelId = suggestion.id
-                                    viewModel.saveLLMSettings()
+                            if !viewModel.llmLoadedModels.isEmpty {
+                                Section("Live") {
+                                    ForEach(viewModel.llmLoadedModels, id: \.self) { id in
+                                        Button(id) {
+                                            viewModel.llmModelId = id
+                                            viewModel.saveLLMSettings()
+                                        }
+                                    }
+                                }
+                            }
+                            if !curated.isEmpty {
+                                Section("Suggested") {
+                                    ForEach(curated, id: \.id) { s in
+                                        Button(s.label) {
+                                            viewModel.llmModelId = s.id
+                                            viewModel.saveLLMSettings()
+                                        }
+                                    }
                                 }
                             }
                         } label: {
@@ -218,18 +249,29 @@ struct SettingsView: View {
                         }
                         .menuStyle(.borderlessButton)
                         .fixedSize()
-                        .help("Suggested models")
+                        .help("Choose a model")
+                    }
+
+                    if viewModel.llmPreset.supportsModelListing {
+                        if viewModel.llmLoadingModels {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Button("Load models") { Task { await viewModel.loadLLMModels() } }
+                                .help("Fetch this provider's current model list (uses your key)")
+                        }
                     }
                 }
-
-                if viewModel.llmPreset == .custom {
-                    TextField("Base URL (OpenAI-compatible)", text: $viewModel.llmBaseURL)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit { viewModel.saveLLMSettings() }
+                if let err = viewModel.llmModelsError {
+                    Label(err, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
+                // API key.
                 HStack {
-                    SecureField(viewModel.llmHasKey ? "API key saved — enter to replace" : "API key", text: $viewModel.llmAPIKeyInput)
+                    SecureField(viewModel.llmHasKey ? "Key saved — enter to replace" : viewModel.llmPreset.keyHint,
+                                text: $viewModel.llmAPIKeyInput)
                         .textFieldStyle(.roundedBorder)
                     Button("Save") { viewModel.saveLLMSettings() }
                         .disabled(viewModel.llmAPIKeyInput.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -237,10 +279,16 @@ struct SettingsView: View {
                         Button("Clear", role: .destructive) { viewModel.clearLLMKey() }
                     }
                 }
-                if viewModel.llmHasKey {
-                    Label("Key stored securely in Keychain", systemImage: "checkmark.seal.fill")
-                        .font(.caption)
-                        .foregroundStyle(Theme.success)
+                HStack(spacing: Theme.Spacing.md) {
+                    if viewModel.llmHasKey {
+                        Label("Key stored in Keychain", systemImage: "checkmark.seal.fill")
+                            .font(.caption)
+                            .foregroundStyle(Theme.success)
+                    }
+                    if let urlString = viewModel.llmPreset.getKeyURL, let url = URL(string: urlString) {
+                        Link("Get a key →", destination: url)
+                            .font(.caption)
+                    }
                 }
 
                 Toggle("Prefer on-device when available", isOn: $viewModel.llmPreferOnDevice)
@@ -271,10 +319,19 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            Text("Keys never leave your Mac except on requests you send to your chosen provider. Embeddings for RAG run on-device. Get an OpenRouter key at openrouter.ai.")
+            Text("Pick a provider — the base URL fills in automatically and the model menu shows current options (tap Load models for the live list). Keys are stored per-provider in your Keychain and only leave your Mac on requests you send to that provider. Embeddings for RAG run on-device.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+
+            Label {
+                Text("**Paper → Podcast** needs a **Google Gemini** key — its multi-speaker audio is Gemini-only. Select **Google Gemini** above to add one; the same key serves Gemini chat and the podcast.")
+            } icon: {
+                Image(systemName: "waveform.circle")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
         } header: {
             SectionHeader("AI Providers (Tutor)", systemImage: "bubble.left.and.bubble.right", tint: Theme.accent)
         }
@@ -398,6 +455,61 @@ struct SettingsView: View {
         kaggleSaved = false
     }
 
+    // MARK: - Discover search sources (GitHub + HuggingFace)
+
+    private var discoverSourcesSection: some View {
+        Section {
+            // GitHub
+            HStack {
+                SecureField(githubTokenSaved ? "GitHub token saved — enter to replace" : "GitHub token (optional)",
+                            text: $githubTokenInput)
+                    .textFieldStyle(.roundedBorder)
+                Button("Save") {
+                    let t = githubTokenInput.trimmingCharacters(in: .whitespaces)
+                    guard !t.isEmpty else { return }
+                    KeychainService.set(t, for: KeychainService.Account.githubToken)
+                    githubTokenInput = ""
+                    githubTokenSaved = KeychainService.has(KeychainService.Account.githubToken)
+                }
+                .disabled(githubTokenInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                if githubTokenSaved {
+                    Button("Clear", role: .destructive) {
+                        KeychainService.delete(KeychainService.Account.githubToken)
+                        githubTokenInput = ""
+                        githubTokenSaved = false
+                    }
+                }
+            }
+            // HuggingFace (shared with HuggingFace inference token)
+            HStack {
+                SecureField(hfTokenSaved ? "HuggingFace token saved — enter to replace" : "HuggingFace token (optional)",
+                            text: $hfTokenInput)
+                    .textFieldStyle(.roundedBorder)
+                Button("Save") {
+                    let t = hfTokenInput.trimmingCharacters(in: .whitespaces)
+                    guard !t.isEmpty else { return }
+                    KeychainService.set(t, for: KeychainService.Account.huggingFace)
+                    hfTokenInput = ""
+                    hfTokenSaved = KeychainService.has(KeychainService.Account.huggingFace)
+                }
+                .disabled(hfTokenInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                if hfTokenSaved {
+                    Button("Clear", role: .destructive) {
+                        KeychainService.delete(KeychainService.Account.huggingFace)
+                        hfTokenInput = ""
+                        hfTokenSaved = false
+                    }
+                }
+            }
+            Text("Discover searches **GitHub repositories** and **HuggingFace papers** alongside the scholarly sources. Both work without a token — adding one only raises the rate limit. Tokens are stored in your Keychain. Create them at github.com/settings/tokens (no scopes needed) and huggingface.co/settings/tokens. The HuggingFace token is shared with HuggingFace inference.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        } header: {
+            SectionHeader("Discover search sources", systemImage: "magnifyingglass", tint: Theme.accent)
+        }
+    }
+
     // MARK: - Math Animations (Manim)
 
     private var manimSection: some View {
@@ -507,7 +619,8 @@ struct SettingsView: View {
 
                 Spacer()
 
-                Text("Version 1.0")
+                Text("Version " + (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
+                     + ((Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String).map { " (\($0))" } ?? ""))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

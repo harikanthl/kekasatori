@@ -15,6 +15,8 @@ enum ScholarlyProviderID: String, Codable, Sendable, CaseIterable {
     case arxiv
     case openAlex
     case europePmc
+    case huggingFace
+    case github
 
     var displayName: String {
         switch self {
@@ -22,6 +24,8 @@ enum ScholarlyProviderID: String, Codable, Sendable, CaseIterable {
         case .arxiv:           return "arXiv"
         case .openAlex:        return "OpenAlex"
         case .europePmc:       return "Europe PMC"
+        case .huggingFace:     return "HuggingFace"
+        case .github:          return "GitHub"
         }
     }
 }

@@ -26,8 +26,11 @@ struct ScholarlySearchService: Sendable {
         OpenAlexProvider()
     ])
 
-    /// Stable display/query order for the built-in providers.
-    static let providerOrder: [ScholarlyProviderID] = [.semanticScholar, .arxiv, .openAlex, .europePmc]
+    /// Stable display/query order for the built-in providers. Scholarly metadata
+    /// first; HuggingFace + GitHub (code/community sources) trail them.
+    static let providerOrder: [ScholarlyProviderID] = [
+        .semanticScholar, .arxiv, .openAlex, .europePmc, .huggingFace, .github
+    ]
 
     static func makeProvider(_ id: ScholarlyProviderID) -> any ScholarlyProvider {
         switch id {
@@ -35,6 +38,8 @@ struct ScholarlySearchService: Sendable {
         case .arxiv:           return ArxivProvider()
         case .openAlex:        return OpenAlexProvider()
         case .europePmc:       return EuropePmcProvider()
+        case .huggingFace:     return HuggingFaceProvider()
+        case .github:          return GitHubProvider()
         }
     }
 
