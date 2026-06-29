@@ -53,6 +53,10 @@ struct ComputePill: View {
     @ObservedObject var store: ComputeTargetStore
     var accruedCostUSD: Double? = nil
     @State private var showingAdd = false
+    // `store.canPromote` reads the Keychain (RunPod/Modal credentials) when a
+    // remote endpoint exists. Cache it so the read happens in `.task`, never
+    // during body/menu evaluation (which can fire a modal Keychain prompt).
+    @State private var canPromote = false
 
     private var selectionBinding: Binding<UUID> {
         Binding(get: { store.selectedID ?? ComputeTarget.localID },
@@ -69,7 +73,7 @@ struct ComputePill: View {
             }
             .pickerStyle(.inline)
 
-            if store.canPromote {
+            if canPromote {
                 Button {
                     store.promote()
                 } label: {
@@ -90,6 +94,9 @@ struct ComputePill: View {
         .menuIndicator(.hidden)
         .fixedSize()
         .sheet(isPresented: $showingAdd) { AddComputeEndpointSheet(store: store) }
+        .task { canPromote = store.canPromote }
+        .onChange(of: store.saved.count) { _, _ in canPromote = store.canPromote }
+        .onChange(of: showingAdd) { _, isOpen in if !isOpen { canPromote = store.canPromote } }
     }
 
     private var dialFace: some View {

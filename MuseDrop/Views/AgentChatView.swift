@@ -16,8 +16,11 @@ struct AgentChatView: View {
     @StateObject private var agent: CockpitAgent
     @State private var draft = ""
     @State private var mode: Mode = .ask
-    private let routeStatus: String
-    private let routeAvailable: Bool
+    // Resolved off the synchronous init path (see `.task` below): computing the
+    // route reads the Keychain, and doing that in `init` fires a modal Keychain
+    // prompt during every SwiftUI re-render of this view.
+    @State private var routeStatus = "Checking provider…"
+    @State private var routeAvailable = true
 
     enum Mode: String, CaseIterable, Identifiable { case ask, agent; var id: String { rawValue }
         var label: String { self == .ask ? "Ask" : "Agent" } }
@@ -26,8 +29,6 @@ struct AgentChatView: View {
         self.workspace = workspace
         self.recentRuns = recentRuns
         let settings = LLMProviderSettings.load()
-        self.routeStatus = LLMRouter.shared.statusDescription(settings: settings)
-        self.routeAvailable = LLMRouter.shared.resolveRoute(settings: settings) != .unavailable
         _agent = StateObject(wrappedValue: CockpitAgent(
             llm: RoutedLLMClient(settings: settings),
             model: settings.modelId,
@@ -47,6 +48,14 @@ struct AgentChatView: View {
             composer
         }
         .frame(minWidth: 280)
+        .task {
+            // Reads the Keychain (provider key); kept off the synchronous
+            // view-construction path so it runs once per appearance instead of
+            // on every re-render, and never blocks launch.
+            let settings = LLMProviderSettings.load()
+            routeStatus = LLMRouter.shared.statusDescription(settings: settings)
+            routeAvailable = LLMRouter.shared.resolveRoute(settings: settings) != .unavailable
+        }
     }
 
     private var pendingActionsBar: some View {
